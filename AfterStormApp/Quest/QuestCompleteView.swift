@@ -69,7 +69,7 @@ struct QuestCompleteView: View {
         }
         .onChange(of: afterPhotoItem) { _, item in
             guard let item else { afterPhotoData = nil; return }
-            Task {
+            Task { @MainActor in
                 afterPhotoData = try? await item.loadTransferable(type: Data.self)
             }
         }
