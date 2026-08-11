@@ -22,6 +22,15 @@ struct RootView: View {
             persistenceLoaded = true
             model.attachPersistence(PersistenceService(context: modelContext))
             model.restoreIfAvailable()
+
+            #if DEBUG
+            if let scenario = DebugAcceptanceScenario.current {
+                model.seedAcceptanceState(completed: scenario.requiresCompletedQuest)
+                flow.advance(to: scenario.phase)
+                return
+            }
+            #endif
+
             if introFinishedWhileLoading {
                 flow.advance(to: model.hasCompletedOnboarding ? .main : .stormReveal)
             }
@@ -109,3 +118,35 @@ struct RootView: View {
         }
     }
 }
+
+#if DEBUG
+private enum DebugAcceptanceScenario: String {
+    case firstQuest = "first-quest"
+    case questComplete = "quest-complete"
+    case restoration = "restoration"
+    case mainProgress = "main-progress"
+
+    static var current: DebugAcceptanceScenario? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let flagIndex = arguments.firstIndex(of: "--afterstorm-acceptance"),
+              arguments.indices.contains(flagIndex + 1) else { return nil }
+        return DebugAcceptanceScenario(rawValue: arguments[flagIndex + 1])
+    }
+
+    var requiresCompletedQuest: Bool {
+        switch self {
+        case .restoration, .mainProgress: true
+        case .firstQuest, .questComplete: false
+        }
+    }
+
+    var phase: AppFlow.Phase {
+        switch self {
+        case .firstQuest: .firstQuest
+        case .questComplete: .questComplete
+        case .restoration: .restorationReveal
+        case .mainProgress: .main
+        }
+    }
+}
+#endif
