@@ -127,25 +127,22 @@ jobs:
 
           LAUNCH_OUTPUT="$(xcrun simctl launch "$UDID" com.stormandme.afterstorm)"
           printf '%s\n' "$LAUNCH_OUTPUT" | tee simulator-launch.txt
-          PID="${LAUNCH_OUTPUT##*: }"
-          test -n "$PID"
-
-          assert_alive() {
-            if ! xcrun simctl spawn "$UDID" kill -0 "$PID"; then
-              echo "AfterStorm process $PID exited during smoke launch" >&2
-              return 1
-            fi
-          }
+          test -n "$LAUNCH_OUTPUT"
 
           sleep 1
-          assert_alive
           xcrun simctl io "$UDID" screenshot afterstorm-smoke-1s.png
           sleep 2
           xcrun simctl io "$UDID" screenshot afterstorm-smoke-3s.png
-          assert_alive
           sleep 3
           xcrun simctl io "$UDID" screenshot afterstorm-smoke-6s.png
-          assert_alive
+
+          capture_runtime_diagnostics
+          trap - EXIT
+          if grep -Eq 'termination reported.*com\.stormandme\.afterstorm|app<com\.stormandme\.afterstorm.*RBSProcessExitStatus|Process exited:.*com\.stormandme\.afterstorm' afterstorm-runtime.log; then
+            echo 'AfterStorm exited during the simulator smoke window.' >&2
+            exit 1
+          fi
+          echo 'AfterStorm remained running through the simulator smoke window.'
       - name: Upload native build diagnostics
         if: always()
         uses: actions/upload-artifact@v4
