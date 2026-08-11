@@ -3,8 +3,8 @@ import AppIntents
 import Foundation
 
 struct GiveMeAQuestIntent: AppIntent {
-    static var title: LocalizedStringResource = "Give Me a Quest"
-    static var description = IntentDescription("Get one small AfterStorm quest based on your chosen life areas.")
+    static let title: LocalizedStringResource = "Give Me a Quest"
+    static let description = IntentDescription("Get one small AfterStorm quest based on your chosen life areas.")
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let snapshot = WidgetSnapshotStore.load()
