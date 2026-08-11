@@ -1,4 +1,5 @@
 import AfterStormCore
+import Foundation
 import Observation
 
 @MainActor
