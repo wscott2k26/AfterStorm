@@ -5,6 +5,7 @@ import Observation
 @Observable
 final class AppSessionModel {
     private let session: AfterStormSession
+    private let questEngine: any QuestEngine
     private let contextComposer: any ContextQuestComposing
     private var persistenceService: PersistenceService?
 
@@ -26,6 +27,7 @@ final class AppSessionModel {
         contextComposer: any ContextQuestComposing = LocalContextQuestComposer()
     ) {
         session = AfterStormSession(engine: engine)
+        questEngine = engine
         self.contextComposer = contextComposer
         syncFromCore()
     }
@@ -68,6 +70,7 @@ final class AppSessionModel {
             persist()
         }
     }
+
     func setAvatarKind(_ kind: AvatarKind) { avatarKind = kind }
 
     func setAvatarStyle(_ style: AvatarStyle) {
@@ -88,7 +91,9 @@ final class AppSessionModel {
         errorMessage = nil
         defer { isLoadingQuests = false }
         do {
-            try await session.refreshSuggestions()
+            let areas = selectedAreas
+            let quests = try await questEngine.suggestions(for: areas, count: 3)
+            session.replaceSuggestions(quests)
             syncFromCore()
         } catch {
             errorMessage = "The storm got noisy. Try those quests again."
