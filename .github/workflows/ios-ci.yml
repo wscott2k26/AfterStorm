@@ -49,6 +49,14 @@ jobs:
             -derivedDataPath DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             build | tee xcodebuild.log
+      - name: Require warning-clean Xcode build
+        run: |
+          set -euo pipefail
+          if grep -n 'warning:' xcodebuild.log; then
+            echo 'Xcode build emitted warnings.' >&2
+            exit 1
+          fi
+          echo 'Xcode build is warning-clean.'
       - name: Boot simulator, install, launch, and capture screens
         shell: bash
         timeout-minutes: 8
@@ -143,6 +151,14 @@ jobs:
             exit 1
           fi
           echo 'AfterStorm remained running through the simulator smoke window.'
+
+          echo '=== Deterministic V1 acceptance screens ==='
+          for SCENARIO in first-quest quest-complete restoration main-progress; do
+            xcrun simctl terminate "$UDID" com.stormandme.afterstorm || true
+            xcrun simctl launch "$UDID" com.stormandme.afterstorm --afterstorm-acceptance "$SCENARIO" | tee "acceptance-${SCENARIO}-launch.txt"
+            sleep 2
+            xcrun simctl io "$UDID" screenshot "afterstorm-acceptance-${SCENARIO}.png"
+          done
       - name: Upload native build diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -158,3 +174,5 @@ jobs:
             afterstorm-smoke-1s.png
             afterstorm-smoke-3s.png
             afterstorm-smoke-6s.png
+            acceptance-*-launch.txt
+            afterstorm-acceptance-*.png
