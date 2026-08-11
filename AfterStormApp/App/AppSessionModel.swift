@@ -143,6 +143,60 @@ final class AppSessionModel {
 
     func clearActiveQuest() { activeQuest = nil }
 
+    #if DEBUG
+    func seedAcceptanceState(completed: Bool) {
+        let areas: Set<LifeArea> = [.home, .focus, .work]
+        let quests = [
+            Quest(
+                id: UUID(uuidString: "A1000000-0000-0000-0000-000000000001")!,
+                title: "Reset one small surface",
+                instruction: "Clear one desk, counter, or table for five focused minutes.",
+                lifeArea: .home,
+                estimatedMinutes: 5,
+                sparkReward: 15,
+                restorationNodeID: "east-lights"
+            ),
+            Quest(
+                id: UUID(uuidString: "A1000000-0000-0000-0000-000000000002")!,
+                title: "Close one open loop",
+                instruction: "Finish one small work task you can complete without switching projects.",
+                lifeArea: .work,
+                estimatedMinutes: 10,
+                sparkReward: 20,
+                restorationNodeID: "workshop"
+            ),
+            Quest(
+                id: UUID(uuidString: "A1000000-0000-0000-0000-000000000003")!,
+                title: "Protect ten minutes",
+                instruction: "Silence distractions and stay with one thing until the timer ends.",
+                lifeArea: .focus,
+                estimatedMinutes: 10,
+                sparkReward: 20,
+                restorationNodeID: "power-station"
+            )
+        ]
+
+        let cleanSession = AfterStormSession(engine: LocalQuestEngine())
+        cleanSession.configure(areas: areas, avatarKind: .stormling, avatarStyle: .default)
+        cleanSession.replaceSuggestions(quests)
+        if completed {
+            cleanSession.complete(quests[0], at: Date(timeIntervalSince1970: 1_786_464_000))
+        }
+
+        session.restore(cleanSession.snapshot())
+        session.replaceSuggestions(quests)
+        selectedAreas = areas
+        avatarKind = .stormling
+        avatarStyle = .default
+        activeQuest = quests[0]
+        lastCompletedQuest = completed ? quests[0] : nil
+        hasCompletedOnboarding = completed
+        isLoadingQuests = false
+        errorMessage = nil
+        syncFromCore()
+    }
+    #endif
+
     private func persist() {
         guard let persistenceService else { return }
         do {
