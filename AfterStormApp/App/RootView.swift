@@ -10,6 +10,9 @@ struct RootView: View {
     @State private var introFinishedWhileLoading = false
     @State private var showingScan = false
     @State private var showingTell = false
+    #if DEBUG
+    @State private var debugAcceptanceScenario = DebugAcceptanceScenario.current
+    #endif
 
     var body: some View {
         ZStack {
@@ -21,7 +24,7 @@ struct RootView: View {
             guard !persistenceLoaded else { return }
 
             #if DEBUG
-            if let scenario = DebugAcceptanceScenario.current {
+            if let scenario = debugAcceptanceScenario {
                 persistenceLoaded = true
                 model.seedAcceptanceState(completed: scenario.requiresCompletedQuest)
                 flow.advance(to: scenario.phase)
@@ -65,6 +68,9 @@ struct RootView: View {
         switch flow.phase {
         case .studioIntro:
             StudioIntroView {
+                #if DEBUG
+                guard debugAcceptanceScenario == nil else { return }
+                #endif
                 if persistenceLoaded {
                     flow.advance(to: model.hasCompletedOnboarding ? .main : .stormReveal)
                 } else {
