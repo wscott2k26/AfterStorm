@@ -115,13 +115,37 @@ jobs:
           plutil -p "$WIDGET_PLIST"
           test "$(plutil -extract NSExtension.NSExtensionPointIdentifier raw "$WIDGET_PLIST")" = "com.apple.widgetkit-extension"
           xcrun simctl install "$UDID" "$APP_PATH"
-          xcrun simctl launch "$UDID" com.stormandme.afterstorm | tee simulator-launch.txt
+
+          capture_runtime_diagnostics() {
+            echo '=== AfterStorm runtime log ==='
+            xcrun simctl spawn "$UDID" log show --last 5m --style compact --predicate 'process == "AfterStorm" OR eventMessage CONTAINS[c] "com.stormandme.afterstorm"' > afterstorm-runtime.log 2>&1 || true
+            cat afterstorm-runtime.log || true
+            mkdir -p afterstorm-crashes
+            find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -type f \( -name 'AfterStorm*.ips' -o -name 'AfterStorm*.crash' \) -mmin -10 -exec cp {} afterstorm-crashes/ \; 2>/dev/null || true
+          }
+          trap capture_runtime_diagnostics EXIT
+
+          LAUNCH_OUTPUT="$(xcrun simctl launch "$UDID" com.stormandme.afterstorm)"
+          printf '%s\n' "$LAUNCH_OUTPUT" | tee simulator-launch.txt
+          PID="${LAUNCH_OUTPUT##*: }"
+          test -n "$PID"
+
+          assert_alive() {
+            if ! xcrun simctl spawn "$UDID" kill -0 "$PID"; then
+              echo "AfterStorm process $PID exited during smoke launch" >&2
+              return 1
+            fi
+          }
+
           sleep 1
+          assert_alive
           xcrun simctl io "$UDID" screenshot afterstorm-smoke-1s.png
           sleep 2
           xcrun simctl io "$UDID" screenshot afterstorm-smoke-3s.png
+          assert_alive
           sleep 3
           xcrun simctl io "$UDID" screenshot afterstorm-smoke-6s.png
+          assert_alive
       - name: Upload native build diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -132,6 +156,8 @@ jobs:
             xcodebuild.log
             simulator-diagnostics.txt
             simulator-launch.txt
+            afterstorm-runtime.log
+            afterstorm-crashes/
             afterstorm-smoke-1s.png
             afterstorm-smoke-3s.png
             afterstorm-smoke-6s.png
