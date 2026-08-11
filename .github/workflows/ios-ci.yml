@@ -46,8 +46,18 @@ jobs:
             build | tee xcodebuild.log
       - name: Boot simulator, install, launch, and capture screens
         shell: bash
+        timeout-minutes: 8
         run: |
-          set -euo pipefail
+          exec > >(tee -a simulator-diagnostics.txt) 2>&1
+          set -euxo pipefail
+          echo '=== Xcode ==='
+          xcodebuild -version
+          echo '=== Available runtimes ==='
+          xcrun simctl list runtimes
+          echo '=== Available devices ==='
+          xcrun simctl list devices available
+          echo '=== Device types ==='
+          xcrun simctl list devicetypes
           UDID="$(python3 - <<'PY'
           import json, subprocess
           data = json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','-j']))
@@ -62,6 +72,7 @@ jobs:
           print(candidates[0][2] if candidates else '')
           PY
           )"
+          echo "Selected existing simulator UDID: ${UDID:-<none>}"
           if [ -z "$UDID" ]; then
             RUNTIME="$(python3 - <<'PY'
           import json, subprocess
@@ -77,12 +88,20 @@ jobs:
           print(ids[-1] if ids else '')
           PY
             )"
+            echo "Fallback runtime: ${RUNTIME:-<none>}"
+            echo "Fallback device type: ${DEVICE_TYPE:-<none>}"
             test -n "$RUNTIME"
             test -n "$DEVICE_TYPE"
             UDID="$(xcrun simctl create 'AfterStorm CI iPhone' "$DEVICE_TYPE" "$RUNTIME")"
+            echo "Created simulator UDID: $UDID"
           fi
-          xcrun simctl boot "$UDID" 2>/dev/null || true
+          echo "=== Simulator before boot ==="
+          xcrun simctl list devices | grep -F "$UDID" || true
+          xcrun simctl boot "$UDID" || true
+          echo '=== Waiting for bootstatus ==='
           xcrun simctl bootstatus "$UDID" -b
+          echo '=== Simulator booted ==='
+          xcrun simctl list devices | grep -F "$UDID" || true
           APP_PATH='DerivedData/Build/Products/Debug-iphonesimulator/AfterStorm.app'
           test -d "$APP_PATH"
           xcrun simctl install "$UDID" "$APP_PATH"
@@ -101,6 +120,7 @@ jobs:
           if-no-files-found: ignore
           path: |
             xcodebuild.log
+            simulator-diagnostics.txt
             simulator-launch.txt
             afterstorm-smoke-1s.png
             afterstorm-smoke-3s.png
