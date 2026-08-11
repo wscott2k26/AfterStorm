@@ -72,18 +72,6 @@ struct LifeAreaSelectionView: View {
 }
 
 private extension LifeArea {
-    var displayName: String {
-        switch self {
-        case .home: "Home & clutter"
-        case .work: "Work & productivity"
-        case .focus: "Focus & procrastination"
-        case .digital: "Digital mess"
-        case .movement: "Movement & energy"
-        case .learning: "Learning & growth"
-        case .lifeAdmin: "Errands & life admin"
-        }
-    }
-
     var symbol: String {
         switch self {
         case .home: "house.fill"
