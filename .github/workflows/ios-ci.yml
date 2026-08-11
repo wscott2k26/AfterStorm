@@ -156,8 +156,14 @@ jobs:
           for SCENARIO in first-quest quest-complete restoration main-progress; do
             xcrun simctl terminate "$UDID" com.stormandme.afterstorm || true
             xcrun simctl launch "$UDID" com.stormandme.afterstorm --afterstorm-acceptance "$SCENARIO" | tee "acceptance-${SCENARIO}-launch.txt"
-            sleep 2
+            sleep 4
             xcrun simctl io "$UDID" screenshot "afterstorm-acceptance-${SCENARIO}.png"
+            xcrun simctl spawn "$UDID" log show --last 8s --style compact --predicate 'process == "AfterStorm" OR eventMessage CONTAINS[c] "com.stormandme.afterstorm"' > "acceptance-${SCENARIO}-runtime.log" 2>&1 || true
+            if grep -Eq 'RBSProcessExitStatus domain:(metal|crash|watchdog)|termination reported.*com\.stormandme\.afterstorm.*domain:(metal|crash|watchdog)' "acceptance-${SCENARIO}-runtime.log"; then
+              echo "AfterStorm acceptance scenario ${SCENARIO} terminated unexpectedly." >&2
+              cat "acceptance-${SCENARIO}-runtime.log"
+              exit 1
+            fi
           done
       - name: Upload native build diagnostics
         if: always()
@@ -175,4 +181,5 @@ jobs:
             afterstorm-smoke-3s.png
             afterstorm-smoke-6s.png
             acceptance-*-launch.txt
+            acceptance-*-runtime.log
             afterstorm-acceptance-*.png
