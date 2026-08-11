@@ -22,7 +22,7 @@ jobs:
         run: swift test
 
   ios-simulator-build:
-    name: iPhone simulator build
+    name: iPhone simulator build and smoke launch
     runs-on: xcode-27
     steps:
       - uses: actions/checkout@v4
@@ -41,11 +41,67 @@ jobs:
             -configuration Debug \
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             build | tee xcodebuild.log
-      - name: Upload build log on failure
-        if: failure()
+      - name: Boot simulator, install, launch, and capture screens
+        shell: bash
+        run: |
+          set -euo pipefail
+          UDID="$(python3 - <<'PY'
+          import json, subprocess
+          data = json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','-j']))
+          candidates = []
+          for runtime, devices in data.get('devices', {}).items():
+              if 'iOS' not in runtime:
+                  continue
+              for device in devices:
+                  if device.get('isAvailable') and device.get('name','').startswith('iPhone'):
+                      candidates.append((runtime, device['name'], device['udid']))
+          candidates.sort(reverse=True)
+          print(candidates[0][2] if candidates else '')
+          PY
+          )"
+          if [ -z "$UDID" ]; then
+            RUNTIME="$(python3 - <<'PY'
+          import json, subprocess
+          data = json.loads(subprocess.check_output(['xcrun','simctl','list','runtimes','-j']))
+          ids = [r['identifier'] for r in data.get('runtimes', []) if r.get('isAvailable') and r.get('name','').startswith('iOS')]
+          print(ids[-1] if ids else '')
+          PY
+            )"
+            DEVICE_TYPE="$(python3 - <<'PY'
+          import json, subprocess
+          data = json.loads(subprocess.check_output(['xcrun','simctl','list','devicetypes','-j']))
+          ids = [d['identifier'] for d in data.get('devicetypes', []) if d.get('name','').startswith('iPhone')]
+          print(ids[-1] if ids else '')
+          PY
+            )"
+            test -n "$RUNTIME"
+            test -n "$DEVICE_TYPE"
+            UDID="$(xcrun simctl create 'AfterStorm CI iPhone' "$DEVICE_TYPE" "$RUNTIME")"
+          fi
+          xcrun simctl boot "$UDID" 2>/dev/null || true
+          xcrun simctl bootstatus "$UDID" -b
+          APP_PATH='DerivedData/Build/Products/Debug-iphonesimulator/AfterStorm.app'
+          test -d "$APP_PATH"
+          xcrun simctl install "$UDID" "$APP_PATH"
+          xcrun simctl launch "$UDID" com.stormandme.afterstorm | tee simulator-launch.txt
+          sleep 1
+          xcrun simctl io "$UDID" screenshot afterstorm-smoke-1s.png
+          sleep 2
+          xcrun simctl io "$UDID" screenshot afterstorm-smoke-3s.png
+          sleep 3
+          xcrun simctl io "$UDID" screenshot afterstorm-smoke-6s.png
+      - name: Upload native build diagnostics
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: afterstorm-xcodebuild-log
-          path: xcodebuild.log
+          name: afterstorm-native-check-${{ github.run_id }}
+          if-no-files-found: ignore
+          path: |
+            xcodebuild.log
+            simulator-launch.txt
+            afterstorm-smoke-1s.png
+            afterstorm-smoke-3s.png
+            afterstorm-smoke-6s.png
