@@ -31,6 +31,7 @@ public final class AfterStormSession {
         selectedAreas = areas
     }
 
+    @MainActor
     public func refreshSuggestions(count: Int = 3) async throws {
         suggestions = try await engine.suggestions(for: selectedAreas, count: count)
     }
