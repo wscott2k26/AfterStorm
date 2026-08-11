@@ -26,7 +26,7 @@ struct WorldDioramaView: View {
             AfterStormTheme.worldGradient
                 .brightness(restorationFraction * 0.07)
 
-            #if canImport(RealityKit) && canImport(UIKit)
+            #if canImport(RealityKit) && canImport(UIKit) && !targetEnvironment(simulator)
             RealityWorldLayer(restoredStages: restoredStages, totalStages: totalStages)
                 .opacity(atmosphericOnly ? 0.20 : 0.40 + restorationFraction * 0.14)
                 .id(restoredStages)
@@ -227,7 +227,7 @@ private struct RainField: View {
     }
 }
 
-#if canImport(RealityKit) && canImport(UIKit)
+#if canImport(RealityKit) && canImport(UIKit) && !targetEnvironment(simulator)
 private struct RealityWorldLayer: View {
     let restoredStages: Int
     let totalStages: Int
