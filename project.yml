@@ -55,6 +55,9 @@ targets:
       path: AfterStormWidget/AfterStormWidget.entitlements
     info:
       path: AfterStormWidget/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.stormandme.afterstorm.widget
