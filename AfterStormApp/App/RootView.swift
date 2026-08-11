@@ -19,18 +19,19 @@ struct RootView: View {
         .animation(AfterStormTheme.premiumSpring, value: flow.phase)
         .task {
             guard !persistenceLoaded else { return }
-            persistenceLoaded = true
-            model.attachPersistence(PersistenceService(context: modelContext))
-            model.restoreIfAvailable()
 
             #if DEBUG
             if let scenario = DebugAcceptanceScenario.current {
+                persistenceLoaded = true
                 model.seedAcceptanceState(completed: scenario.requiresCompletedQuest)
                 flow.advance(to: scenario.phase)
                 return
             }
             #endif
 
+            persistenceLoaded = true
+            model.attachPersistence(PersistenceService(context: modelContext))
+            model.restoreIfAvailable()
             if introFinishedWhileLoading {
                 flow.advance(to: model.hasCompletedOnboarding ? .main : .stormReveal)
             }
