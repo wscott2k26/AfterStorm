@@ -37,7 +37,10 @@ for target_name, target in data['targets'].items():
     for dependency in target.get('dependencies', []):
         if isinstance(dependency, dict) and 'target' in dependency:
             assert dependency['target'] in data['targets'], f'{target_name}: missing target dependency {dependency["target"]}'
-print('YAML targets, source paths, dependencies, and required project files OK')
+widget_info = data['targets']['AfterStormWidget'].get('info', {})
+widget_point = widget_info.get('properties', {}).get('NSExtension', {}).get('NSExtensionPointIdentifier')
+assert widget_point == 'com.apple.widgetkit-extension', f'AfterStormWidget: invalid extension point {widget_point!r}'
+print('YAML targets, source paths, dependencies, WidgetKit metadata, and required project files OK')
 PY
 
 printf '\n[4/6] JSON/plist/resource integrity\n'
