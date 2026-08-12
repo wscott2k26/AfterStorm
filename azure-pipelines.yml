@@ -91,6 +91,63 @@ steps:
       echo 'AfterStorm Azure build is warning-clean.'
     displayName: 'Require warning-clean Xcode build'
 
+  - bash: |
+      set -euxo pipefail
+      mkdir -p azure-screens
+
+      UDID="$(python3 - <<'PY'
+      import json, subprocess
+      data = json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','-j']))
+      candidates = []
+      for runtime, devices in data.get('devices', {}).items():
+          if 'iOS' not in runtime:
+              continue
+          for device in devices:
+              if device.get('isAvailable') and device.get('name', '').startswith('iPhone'):
+                  candidates.append((runtime, device['name'], device['udid']))
+      candidates.sort(reverse=True)
+      print(candidates[0][2] if candidates else '')
+      PY
+      )"
+
+      if [ -z "$UDID" ]; then
+        echo 'No available iPhone simulator was found on the Azure macOS image.' >&2
+        exit 1
+      fi
+
+      echo "Using simulator $UDID"
+      xcrun simctl boot "$UDID" || true
+      xcrun simctl bootstatus "$UDID" -b
+
+      APP_PATH="$(derivedDataPath)/Build/Products/Debug-iphonesimulator/AfterStorm.app"
+      test -d "$APP_PATH"
+      test -f "$APP_PATH/PlugIns/AfterStormWidget.appex/Info.plist"
+      xcrun simctl install "$UDID" "$APP_PATH"
+
+      xcrun simctl launch "$UDID" com.stormandme.afterstorm | tee azure-screens/smoke-launch.txt
+      sleep 4
+      xcrun simctl io "$UDID" screenshot azure-screens/afterstorm-smoke.png
+
+      for SCENARIO in first-quest quest-complete restoration main-progress; do
+        xcrun simctl terminate "$UDID" com.stormandme.afterstorm || true
+        xcrun simctl launch "$UDID" com.stormandme.afterstorm --afterstorm-acceptance "$SCENARIO" \
+          | tee "azure-screens/${SCENARIO}-launch.txt"
+        sleep 4
+        xcrun simctl io "$UDID" screenshot "azure-screens/afterstorm-${SCENARIO}.png"
+      done
+
+      xcrun simctl spawn "$UDID" log show --last 5m --style compact \
+        --predicate 'process == "AfterStorm" OR eventMessage CONTAINS[c] "com.stormandme.afterstorm"' \
+        > azure-screens/afterstorm-runtime.log 2>&1 || true
+
+      if grep -Eq 'RBSProcessExitStatus domain:(metal|crash|watchdog)|termination reported.*com\.stormandme\.afterstorm.*domain:(metal|crash|watchdog)' azure-screens/afterstorm-runtime.log; then
+        echo 'AfterStorm terminated unexpectedly during Azure simulator acceptance.' >&2
+        cat azure-screens/afterstorm-runtime.log
+        exit 1
+      fi
+    displayName: 'Boot iPhone simulator and capture acceptance screens'
+    timeoutInMinutes: 12
+
   - task: PublishBuildArtifacts@1
     condition: always()
     inputs:
@@ -98,3 +155,11 @@ steps:
       ArtifactName: 'afterstorm-xcode-log'
       publishLocation: 'Container'
     displayName: 'Publish Xcode build log'
+
+  - task: PublishBuildArtifacts@1
+    condition: always()
+    inputs:
+      PathtoPublish: 'azure-screens'
+      ArtifactName: 'afterstorm-simulator-screens'
+      publishLocation: 'Container'
+    displayName: 'Publish AfterStorm simulator screens'
