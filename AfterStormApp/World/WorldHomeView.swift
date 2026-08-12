@@ -1,3 +1,4 @@
+import AfterStormCore
 import SwiftUI
 
 struct WorldHomeView: View {
@@ -8,22 +9,32 @@ struct WorldHomeView: View {
     @State private var showingMap = false
     @State private var showingResidents = false
 
+    private var restoredStages: Int {
+        model.restorationNodes.reduce(0) { $0 + $1.stage }
+    }
+
+    private var totalStages: Int {
+        max(24, model.restorationNodes.reduce(0) { $0 + $1.maxStage })
+    }
+
     private var blockIsRestored: Bool {
         !model.restorationNodes.isEmpty && model.restorationNodes.allSatisfy(\.isFullyRestored)
     }
 
     private var restorationFraction: Double {
-        let restored = model.restorationNodes.reduce(0) { $0 + $1.stage }
-        let total = model.restorationNodes.reduce(0) { $0 + $1.maxStage }
-        guard total > 0 else { return 0 }
-        return min(1, Double(restored) / Double(total))
+        guard totalStages > 0 else { return 0 }
+        return min(1, Double(restoredStages) / Double(totalStages))
+    }
+
+    private var weatherState: WorldWeatherState {
+        WorldWeatherState(restoredStages: restoredStages, totalStages: totalStages)
     }
 
     private var weatherLabel: String {
-        switch restorationFraction {
-        case ..<0.36: "Stormy"
-        case ..<0.76: "Clearing"
-        default: "Afterglow"
+        switch weatherState {
+        case .stormy: "Stormy"
+        case .clearing: "Clearing"
+        case .afterglow: "Afterglow"
         }
     }
 
