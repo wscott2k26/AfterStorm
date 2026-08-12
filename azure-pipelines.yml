@@ -114,30 +114,71 @@ steps:
   - bash: |
       set -euxo pipefail
       mkdir -p azure-screens
+      : > azure-screens/simulator-boot.log
 
-      UDID="$(python3 - <<'PY'
-      import json, subprocess
-      data = json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','-j']))
+      # Hosted macOS images occasionally expose an iPhone device whose first boot
+      # never finishes. Bound each boot attempt and automatically try another
+      # available iPhone instead of burning the whole job timeout on one device.
+      python3 - <<'PY' > azure-screens/selected-simulator.env
+      import json
+      import re
+      import subprocess
+      import sys
+      from pathlib import Path
+
+      log_path = Path('azure-screens/simulator-boot.log')
+
+      def log(message):
+          print(message, file=sys.stderr, flush=True)
+          with log_path.open('a', encoding='utf-8') as handle:
+              handle.write(message + '\n')
+
+      data = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '-j']))
       candidates = []
       for runtime, devices in data.get('devices', {}).items():
           if 'iOS' not in runtime:
               continue
+          match = re.search(r'iOS-(\d+)(?:-(\d+))?', runtime)
+          version = (int(match.group(1)), int(match.group(2) or 0)) if match else (0, 0)
           for device in devices:
               if device.get('isAvailable') and device.get('name', '').startswith('iPhone'):
-                  candidates.append((runtime, device['name'], device['udid']))
+                  already_booted = device.get('state') == 'Booted'
+                  candidates.append((already_booted, version, device.get('name', ''), device['udid']))
+
       candidates.sort(reverse=True)
-      print(candidates[0][2] if candidates else '')
+      if not candidates:
+          log('No available iPhone simulators were reported by simctl.')
+          subprocess.run(['xcrun', 'simctl', 'list', 'devices', 'available'])
+          sys.exit(1)
+
+      for attempt, (_, version, name, udid) in enumerate(candidates[:2], start=1):
+          log(f'Attempt {attempt}: {name} iOS {version[0]}.{version[1]} ({udid})')
+          subprocess.run(['xcrun', 'simctl', 'boot', udid], check=False)
+          try:
+              subprocess.run(
+                  ['xcrun', 'simctl', 'bootstatus', udid, '-b'],
+                  check=True,
+                  timeout=240,
+              )
+              log(f'Simulator became ready: {name} ({udid})')
+              print(f'UDID={udid}')
+              print(f'DEVICE_NAME={name.replace(" ", "_")}')
+              sys.exit(0)
+          except subprocess.TimeoutExpired:
+              log(f'Boot timed out after 240 seconds: {name} ({udid})')
+          except subprocess.CalledProcessError as exc:
+              log(f'bootstatus failed with exit {exc.returncode}: {name} ({udid})')
+
+          subprocess.run(['xcrun', 'simctl', 'shutdown', udid], check=False)
+
+      log('No simulator became ready after two bounded attempts. Device state follows:')
+      subprocess.run(['xcrun', 'simctl', 'list', 'devices', 'available'])
+      sys.exit(1)
       PY
-      )"
 
-      if [ -z "$UDID" ]; then
-        echo 'No available iPhone simulator was found on the Azure macOS image.' >&2
-        exit 1
-      fi
-
-      echo "Using simulator $UDID"
-      xcrun simctl boot "$UDID" || true
-      xcrun simctl bootstatus "$UDID" -b
+      source azure-screens/selected-simulator.env
+      test -n "${UDID:-}"
+      echo "Selected simulator ${DEVICE_NAME:-iPhone} ($UDID)" | tee -a azure-screens/simulator-boot.log
 
       APP_PATH="$(derivedDataPath)/Build/Products/Debug-iphonesimulator/AfterStorm.app"
       test -d "$APP_PATH"
@@ -166,7 +207,7 @@ steps:
         exit 1
       fi
     displayName: 'Boot iPhone simulator and capture acceptance screens'
-    timeoutInMinutes: 12
+    timeoutInMinutes: 15
 
   - task: PublishBuildArtifacts@1
     condition: always()
