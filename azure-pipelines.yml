@@ -71,6 +71,8 @@ steps:
 
   - bash: |
       set -o pipefail
+      mkdir -p azure-screens
+      : > xcodebuild.log
       xcodebuild \
         -project AfterStorm.xcodeproj \
         -scheme AfterStorm \
@@ -81,6 +83,24 @@ steps:
         CODE_SIGNING_ALLOWED=NO \
         build | tee xcodebuild.log
     displayName: 'Build AfterStorm and widget for iOS Simulator'
+
+  - bash: |
+      set -euo pipefail
+      mkdir -p azure-screens
+      if [ -f xcodebuild.log ]; then
+        grep -nE '(^|[^A-Za-z])(error:|fatal error:)' xcodebuild.log > azure-screens/xcode-errors.txt || true
+        tail -n 300 xcodebuild.log > azure-screens/xcodebuild-tail.txt || true
+        echo '=== Xcode compiler errors ==='
+        if [ -s azure-screens/xcode-errors.txt ]; then
+          cat azure-screens/xcode-errors.txt
+        else
+          echo 'No literal compiler error lines were found; inspect xcodebuild-tail.txt.'
+        fi
+      else
+        echo 'xcodebuild.log was not created.' > azure-screens/xcode-errors.txt
+      fi
+    displayName: 'Collect Xcode failure diagnostics'
+    condition: always()
 
   - bash: |
       set -euo pipefail
@@ -162,4 +182,4 @@ steps:
       PathtoPublish: 'azure-screens'
       ArtifactName: 'afterstorm-simulator-screens'
       publishLocation: 'Container'
-    displayName: 'Publish AfterStorm simulator screens'
+    displayName: 'Publish AfterStorm simulator screens and diagnostics'
