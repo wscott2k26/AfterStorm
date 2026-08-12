@@ -11,7 +11,7 @@ AfterStorm is a native, iPhone-first restoration game for real life: choose or g
 
 ## V1 surfaces
 
-- **World** — The Block diorama, 24 visible restoration stages, weather clearing, residents returning, Map, Scan, Tell, and Give Me a Quest.
+- **World** — The Block diorama, 24 visible restoration stages, staged street/window/store lighting, wet-road reflections, trees and nature healing, Stormlings/residents returning, Stormy → Clearing → Afterglow weather, Map, Scan, Tell, and Give Me a Quest.
 - **Quests** — three rotating suggestions, life-area/time filters, quest detail, easier mode, timer/pause, completion and restoration.
 - **Collection** — deterministic Sparks/quest-based cosmetic and world rewards.
 - **Me** — avatar editing, life-area editing, progress, residents, privacy, and AfterStorm+.
@@ -24,7 +24,8 @@ AfterStorm is a native, iPhone-first restoration game for real life: choose or g
 - `Shared` — app-group widget snapshot and Give Me a Quest App Intent.
 - `AfterStormWidget` — system-small/system-medium progress widget.
 - `project.yml` — XcodeGen project definition.
-- `.github/workflows/ios-ci.yml` — macOS core-test + iPhone-simulator build gate once this repo is connected to GitHub.
+- `azure-pipelines.yml` — normal development CI: tests, Xcode build, simulator smoke launch and acceptance screenshots on Microsoft-hosted macOS.
+- `.github/workflows/ios-ci.yml` — manual-only Xcode 27 release verification so routine commits do not consume GitHub macOS minutes.
 
 ## Local verification
 
@@ -32,7 +33,7 @@ AfterStorm is a native, iPhone-first restoration game for real life: choose or g
 ./scripts/verify-local.sh
 ```
 
-The verifier first recreates the deterministic icon/audio build assets, then Linux can prove core tests, Swift syntax, project structure and resource integrity. It cannot prove an iOS SDK typecheck or simulator runtime.
+The verifier recreates deterministic icon/audio assets, then proves core tests, native Swift syntax, project/resource integrity, Azure/GitHub CI policy and release-marker cleanliness. Linux cannot replace the final macOS/iOS SDK typecheck.
 
 ## Generate on macOS
 
@@ -41,7 +42,13 @@ The verifier first recreates the deterministic icon/audio build assets, then Lin
 open AfterStorm.xcodeproj
 ```
 
-Then select the Storm and Me Studios development team and verify the app + widget on an iPhone simulator/device before merging the feature branch.
+Then select the Storm and Me Studios development team and verify the app + widget on an iPhone simulator/device before release.
+
+## CI strategy
+
+- **Azure Pipelines:** automatic development builds on `main` and `feature/*`; publishes Xcode logs and real simulator acceptance screenshots.
+- **GitHub Actions:** manual Xcode 27 release check only.
+- Azure connection instructions: `docs/quality/azure-pipelines-setup.md`.
 
 ## Bundle identities
 
@@ -59,4 +66,4 @@ Then select the Storm and Me Studios development team and verify the app + widge
 - Foundation Models enhance the app; they never gate basic usefulness.
 - Scan images are not stored in the AfterStorm progress database.
 - Every completed quest advances a restoration stage and leaves a visible world change.
-- `main` stays protected until a real Xcode/iOS build gate passes.
+- `main` stays protected until the current feature branch has a fresh macOS/Xcode compile and visual acceptance result.
