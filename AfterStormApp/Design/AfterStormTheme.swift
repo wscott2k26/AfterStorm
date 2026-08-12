@@ -20,6 +20,15 @@ enum AfterStormTheme {
     static let spark = Color(red: 1.00, green: 0.82, blue: 0.36)
     static let restoredGreen = Color(red: 0.28, green: 0.65, blue: 0.46)
 
+    static let wetAsphalt = Color(red: 0.055, green: 0.072, blue: 0.095)
+    static let wetReflection = Color(red: 0.20, green: 0.34, blue: 0.43)
+    static let lanternWarm = Color(red: 1.00, green: 0.72, blue: 0.28)
+    static let freshLeaf = Color(red: 0.31, green: 0.72, blue: 0.43)
+    static let deepLeaf = Color(red: 0.12, green: 0.38, blue: 0.24)
+    static let clearingSky = Color(red: 0.22, green: 0.42, blue: 0.58)
+    static let afterglowSky = Color(red: 0.42, green: 0.39, blue: 0.48)
+    static let duskRose = Color(red: 0.69, green: 0.39, blue: 0.38)
+
     static let premiumSpring = Animation.spring(response: 0.38, dampingFraction: 0.78)
     static let quickSpring = Animation.spring(response: 0.22, dampingFraction: 0.72)
 
