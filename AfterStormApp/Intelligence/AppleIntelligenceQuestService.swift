@@ -35,7 +35,7 @@ struct AppleIntelligenceQuestService {
 
     @available(iOS 27.0, *)
     func sceneDescription(for image: CGImage) async throws -> String {
-        #if canImport(FoundationModels)
+        #if compiler(>=6.3) && canImport(FoundationModels)
         let model = SystemLanguageModel.default
         guard model.isAvailable else { throw ServiceError.unavailable }
         let session = LanguageModelSession(instructions: "Describe only useful, nonjudgmental details that can become small everyday-life tasks.")
@@ -45,6 +45,8 @@ struct AppleIntelligenceQuestService {
         }
         return try await session.respond(to: prompt).content
         #else
+        // Xcode 26 / older Foundation Models SDKs still build the full app.
+        // Scene analysis falls back to Vision/local context until the iOS 27 API is available.
         throw ServiceError.unavailable
         #endif
     }
