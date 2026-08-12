@@ -42,6 +42,7 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath DerivedData \
             CODE_SIGNING_ALLOWED=NO \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS='DEBUG AFTERSTORM_MULTIMODAL' \
             build | tee xcodebuild.log
 
       - name: Require warning-clean Xcode build
