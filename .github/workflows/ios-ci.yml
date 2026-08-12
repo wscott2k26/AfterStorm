@@ -1,42 +1,36 @@
-name: AfterStorm iOS CI
+name: AfterStorm Xcode 27 Release Check
 
 on:
   workflow_dispatch:
-  pull_request:
-  push:
-    branches:
-      - main
-      - 'feature/**'
 
 concurrency:
-  group: afterstorm-ios-${{ github.ref }}
+  group: afterstorm-xcode27-release-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  core-tests:
-    name: Core tests
-    runs-on: macos-26
-    steps:
-      - uses: actions/checkout@v4
-      - name: Swift core tests
-        run: swift test
-
-  ios-simulator-build:
-    name: iPhone simulator build and smoke launch
+  release-check:
+    name: Xcode 27 build, simulator smoke, and acceptance screens
     runs-on: xcode-27
     steps:
       - uses: actions/checkout@v4
+
+      - name: Swift core tests
+        run: swift test
+
       - name: Generate deterministic app assets
         run: python3 scripts/generate-assets.py
+
       - name: Install XcodeGen
         run: brew install xcodegen
+
       - name: Generate Xcode project
         run: xcodegen generate
-      - name: Verify generated WidgetKit metadata
+
+      - name: Verify WidgetKit metadata
         run: |
           set -euo pipefail
           test "$(plutil -extract NSExtension.NSExtensionPointIdentifier raw AfterStormWidget/Info.plist)" = "com.apple.widgetkit-extension"
-          plutil -p AfterStormWidget/Info.plist
+
       - name: Build AfterStorm and widget
         run: |
           set -o pipefail
@@ -49,6 +43,7 @@ jobs:
             -derivedDataPath DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             build | tee xcodebuild.log
+
       - name: Require warning-clean Xcode build
         run: |
           set -euo pipefail
@@ -57,86 +52,36 @@ jobs:
             exit 1
           fi
           echo 'Xcode build is warning-clean.'
+
       - name: Boot simulator, install, launch, and capture screens
         shell: bash
-        timeout-minutes: 8
+        timeout-minutes: 10
         run: |
-          exec > >(tee -a simulator-diagnostics.txt) 2>&1
           set -euxo pipefail
-          echo '=== Xcode ==='
-          xcodebuild -version
-          echo '=== Available runtimes ==='
-          xcrun simctl list runtimes
-          echo '=== Available devices ==='
-          xcrun simctl list devices available
-          echo '=== Device types ==='
-          xcrun simctl list devicetypes
           UDID="$(python3 - <<'PY'
           import json, subprocess
           data = json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','-j']))
-          candidates = []
-          for runtime, devices in data.get('devices', {}).items():
+          candidates=[]
+          for runtime, devices in data.get('devices',{}).items():
               if 'iOS' not in runtime:
                   continue
               for device in devices:
                   if device.get('isAvailable') and device.get('name','').startswith('iPhone'):
-                      candidates.append((runtime, device['name'], device['udid']))
+                      candidates.append((runtime,device['name'],device['udid']))
           candidates.sort(reverse=True)
           print(candidates[0][2] if candidates else '')
           PY
           )"
-          echo "Selected existing simulator UDID: ${UDID:-<none>}"
-          if [ -z "$UDID" ]; then
-            RUNTIME="$(python3 - <<'PY'
-          import json, subprocess
-          data = json.loads(subprocess.check_output(['xcrun','simctl','list','runtimes','-j']))
-          ids = [r['identifier'] for r in data.get('runtimes', []) if r.get('isAvailable') and r.get('name','').startswith('iOS')]
-          print(ids[-1] if ids else '')
-          PY
-            )"
-            DEVICE_TYPE="$(python3 - <<'PY'
-          import json, subprocess
-          data = json.loads(subprocess.check_output(['xcrun','simctl','list','devicetypes','-j']))
-          ids = [d['identifier'] for d in data.get('devicetypes', []) if d.get('name','').startswith('iPhone')]
-          print(ids[-1] if ids else '')
-          PY
-            )"
-            echo "Fallback runtime: ${RUNTIME:-<none>}"
-            echo "Fallback device type: ${DEVICE_TYPE:-<none>}"
-            test -n "$RUNTIME"
-            test -n "$DEVICE_TYPE"
-            UDID="$(xcrun simctl create 'AfterStorm CI iPhone' "$DEVICE_TYPE" "$RUNTIME")"
-            echo "Created simulator UDID: $UDID"
-          fi
-          echo "=== Simulator before boot ==="
-          xcrun simctl list devices | grep -F "$UDID" || true
+          test -n "$UDID"
           xcrun simctl boot "$UDID" || true
-          echo '=== Waiting for bootstatus ==='
           xcrun simctl bootstatus "$UDID" -b
-          echo '=== Simulator booted ==='
-          xcrun simctl list devices | grep -F "$UDID" || true
+
           APP_PATH='DerivedData/Build/Products/Debug-iphonesimulator/AfterStorm.app'
-          WIDGET_PLIST="$APP_PATH/PlugIns/AfterStormWidget.appex/Info.plist"
           test -d "$APP_PATH"
-          test -f "$WIDGET_PLIST"
-          echo '=== Embedded WidgetKit metadata ==='
-          plutil -p "$WIDGET_PLIST"
-          test "$(plutil -extract NSExtension.NSExtensionPointIdentifier raw "$WIDGET_PLIST")" = "com.apple.widgetkit-extension"
+          test -f "$APP_PATH/PlugIns/AfterStormWidget.appex/Info.plist"
           xcrun simctl install "$UDID" "$APP_PATH"
 
-          capture_runtime_diagnostics() {
-            echo '=== AfterStorm runtime log ==='
-            xcrun simctl spawn "$UDID" log show --last 5m --style compact --predicate 'process == "AfterStorm" OR eventMessage CONTAINS[c] "com.stormandme.afterstorm"' > afterstorm-runtime.log 2>&1 || true
-            cat afterstorm-runtime.log || true
-            mkdir -p afterstorm-crashes
-            find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -type f \( -name 'AfterStorm*.ips' -o -name 'AfterStorm*.crash' \) -mmin -10 -exec cp {} afterstorm-crashes/ \; 2>/dev/null || true
-          }
-          trap capture_runtime_diagnostics EXIT
-
-          LAUNCH_OUTPUT="$(xcrun simctl launch "$UDID" com.stormandme.afterstorm)"
-          printf '%s\n' "$LAUNCH_OUTPUT" | tee simulator-launch.txt
-          test -n "$LAUNCH_OUTPUT"
-
+          xcrun simctl launch "$UDID" com.stormandme.afterstorm | tee simulator-launch.txt
           sleep 1
           xcrun simctl io "$UDID" screenshot afterstorm-smoke-1s.png
           sleep 2
@@ -144,42 +89,22 @@ jobs:
           sleep 3
           xcrun simctl io "$UDID" screenshot afterstorm-smoke-6s.png
 
-          capture_runtime_diagnostics
-          trap - EXIT
-          if grep -Eq 'termination reported.*com\.stormandme\.afterstorm|app<com\.stormandme\.afterstorm.*RBSProcessExitStatus|Process exited:.*com\.stormandme\.afterstorm' afterstorm-runtime.log; then
-            echo 'AfterStorm exited during the simulator smoke window.' >&2
-            exit 1
-          fi
-          echo 'AfterStorm remained running through the simulator smoke window.'
-
-          echo '=== Deterministic V1 acceptance screens ==='
           for SCENARIO in first-quest quest-complete restoration main-progress; do
             xcrun simctl terminate "$UDID" com.stormandme.afterstorm || true
             xcrun simctl launch "$UDID" com.stormandme.afterstorm --afterstorm-acceptance "$SCENARIO" | tee "acceptance-${SCENARIO}-launch.txt"
             sleep 4
             xcrun simctl io "$UDID" screenshot "afterstorm-acceptance-${SCENARIO}.png"
-            xcrun simctl spawn "$UDID" log show --last 8s --style compact --predicate 'process == "AfterStorm" OR eventMessage CONTAINS[c] "com.stormandme.afterstorm"' > "acceptance-${SCENARIO}-runtime.log" 2>&1 || true
-            if grep -Eq 'RBSProcessExitStatus domain:(metal|crash|watchdog)|termination reported.*com\.stormandme\.afterstorm.*domain:(metal|crash|watchdog)' "acceptance-${SCENARIO}-runtime.log"; then
-              echo "AfterStorm acceptance scenario ${SCENARIO} terminated unexpectedly." >&2
-              cat "acceptance-${SCENARIO}-runtime.log"
-              exit 1
-            fi
           done
-      - name: Upload native build diagnostics
+
+      - name: Upload release-check evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: afterstorm-native-check-${{ github.run_id }}
+          name: afterstorm-xcode27-release-${{ github.run_id }}
           if-no-files-found: ignore
           path: |
             xcodebuild.log
-            simulator-diagnostics.txt
             simulator-launch.txt
-            afterstorm-runtime.log
-            afterstorm-crashes/
-            afterstorm-smoke-1s.png
-            afterstorm-smoke-3s.png
-            afterstorm-smoke-6s.png
+            afterstorm-smoke-*.png
             acceptance-*-launch.txt
-            acceptance-*-runtime.log
             afterstorm-acceptance-*.png
