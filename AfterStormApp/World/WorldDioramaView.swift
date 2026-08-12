@@ -20,7 +20,9 @@ struct WorldDioramaView: View {
         guard totalStages > 0 else { return 0 }
         return min(1, Double(restoredStages) / Double(totalStages))
     }
-    private var weather: WorldWeatherState { WorldWeatherState(fraction: restorationFraction) }
+    private var weather: WorldWeatherState {
+        WorldWeatherState(restoredStages: restoredStages, totalStages: totalStages)
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -48,9 +50,7 @@ struct WorldDioramaView: View {
 
                 PremiumBlockScene(
                     restoredStages: restoredStages,
-                    totalStages: totalStages,
                     restorationFraction: restorationFraction,
-                    weather: weather,
                     reduceMotion: reduceMotion
                 )
                 .frame(
@@ -113,19 +113,7 @@ struct WorldDioramaView: View {
     }
 }
 
-private enum WorldWeatherState {
-    case stormy
-    case clearing
-    case afterglow
-
-    init(fraction: Double) {
-        switch fraction {
-        case ..<0.36: self = .stormy
-        case ..<0.76: self = .clearing
-        default: self = .afterglow
-        }
-    }
-
+private extension WorldWeatherState {
     var skyGradient: LinearGradient {
         let colors: [Color]
         switch self {
@@ -179,13 +167,7 @@ private enum WorldWeatherState {
         }
     }
 
-    var accessibilityName: String {
-        switch self {
-        case .stormy: "stormy"
-        case .clearing: "clearing"
-        case .afterglow: "afterglow"
-        }
-    }
+    var accessibilityName: String { rawValue }
 }
 
 private struct CloudShelf: View {
@@ -221,9 +203,7 @@ private struct CloudShelf: View {
 
 private struct PremiumBlockScene: View {
     let restoredStages: Int
-    let totalStages: Int
     let restorationFraction: Double
-    let weather: WorldWeatherState
     let reduceMotion: Bool
 
     private let buildingCount = 7
@@ -330,13 +310,8 @@ private struct PremiumBlockScene: View {
                 Text("CORNER")
                     .font(.system(size: 6, weight: .black, design: .rounded))
                     .tracking(0.8)
-                    .foregroundStyle(
-                        localStage >= 2 ? AfterStormTheme.lanternWarm : .white.opacity(0.28)
-                    )
-                    .shadow(
-                        color: localStage >= 2 ? AfterStormTheme.lanternWarm.opacity(0.75) : .clear,
-                        radius: 5
-                    )
+                    .foregroundStyle(localStage >= 2 ? AfterStormTheme.lanternWarm : .white.opacity(0.28))
+                    .shadow(color: localStage >= 2 ? AfterStormTheme.lanternWarm.opacity(0.75) : .clear, radius: 5)
             }
 
             RoundedRectangle(cornerRadius: 9, style: .continuous)
@@ -358,10 +333,7 @@ private struct PremiumBlockScene: View {
                             RoundedRectangle(cornerRadius: 2)
                                 .fill(isLit ? AfterStormTheme.lanternWarm.opacity(0.94) : .white.opacity(0.075))
                                 .frame(width: width * 0.42, height: 7)
-                                .shadow(
-                                    color: isLit ? AfterStormTheme.lanternWarm.opacity(0.62) : .clear,
-                                    radius: 5
-                                )
+                                .shadow(color: isLit ? AfterStormTheme.lanternWarm.opacity(0.62) : .clear, radius: 5)
                         }
                     }
                     .padding(.top, 13)
@@ -449,10 +421,7 @@ private struct StreetLampView: View {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(lit ? AfterStormTheme.lanternWarm : .white.opacity(0.16))
                     .frame(width: 11, height: 8)
-                    .shadow(
-                        color: lit ? AfterStormTheme.lanternWarm.opacity(0.72) : .clear,
-                        radius: 5
-                    )
+                    .shadow(color: lit ? AfterStormTheme.lanternWarm.opacity(0.72) : .clear, radius: 5)
             }
             Capsule()
                 .fill(.white.opacity(0.24))
