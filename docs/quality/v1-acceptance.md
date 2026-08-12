@@ -18,53 +18,87 @@ Implemented V1 surfaces and systems include:
 - Contextual typed/speech quest requests and Scan My World camera/photo flow.
 - Vision/local fallback plus availability-gated Apple Foundation Models enhancement.
 - Tested idempotent quest completion, Sparks, completion history, progression insights, residents and collectibles.
-- The Block world with 24 visible restoration stages, evolving weather/lighting/life, resident reactions and a next-district tease at full restoration.
+- The Block world with 24 visible restoration stages.
+- Premium World pass: closer diorama framing, staged windows/doors/store/streetlights, wet-road reflections, progressive tree/nature healing, Stormlings/human/animal life, and the tested Stormy → Clearing → Afterglow weather state.
+- Stronger restoration reveal with controlled push-in, Sparks/afterglow pulse, audio/haptics and resident reaction.
 - Quest focus timer with pause/resume and Need Something Easier.
 - Optional non-persisted after photo.
 - Original audio cues plus evolving storm/afterglow ambience and haptics.
 - SwiftData persistence with CloudKit-managed configuration attempt and durable local fallback.
 - Give Me a Quest App Intent / Siri shortcut surface and Home Screen widget.
-- Widget weather state that evolves from Stormy to Clearing to Afterglow.
+- Widget weather state that uses the same Stormy → Clearing → Afterglow core model as the World screen.
 - AfterStorm+ StoreKit 2 subscription shell while keeping the core restoration loop free.
 - App icon asset catalog, privacy strings, entitlements, Reduce Motion handling and accessibility labels/hints on primary surfaces.
-- XcodeGen project specification and GitHub Actions CI definition.
+- XcodeGen project specification.
+- Azure Pipelines development CI plus manual-only GitHub Xcode 27 release verification.
 
-## Proven in the current workspace
+## Previously proven macOS/Xcode baseline
 
-The final local verification script is `./scripts/verify-local.sh` and must remain green before any checkpoint is handed off.
+Before the premium World/Azure migration commits, the feature branch passed the full Xcode 27 hosted gate:
 
-The Linux environment can prove:
+- `swift test` green.
+- AfterStorm app + widget compiled with Xcode 27 for the iPhone Simulator.
+- Warning-clean Xcode build.
+- Simulator boot/install/launch succeeded.
+- First Quest, Quest Complete, Restoration and Main World acceptance scenarios launched and produced real simulator screenshots.
+- The acceptance-state race that could return early scenarios to the intro was fixed and the subsequent Xcode 27 run was green.
+
+This is the established native baseline. The newer World-polish commits must still receive their own macOS build/screenshot evidence before merge.
+
+## Fresh verification for the current premium-World head
+
+The current changed Swift/config files were mirrored from GitHub and hash-matched to their GitHub blobs before local verification.
+
+Fresh Linux verification on the current code produced:
 
 - Swift package core tests: **22 passed, 0 failures**.
-- Native app/widget/shared Swift syntax parse: **45 files parsed successfully**.
-- `project.yml` parses as YAML and all declared source paths/target dependencies exist.
-- App icon asset JSON, widget plist and app/widget entitlements parse correctly; deterministic icon/WAV assets are recreated from `scripts/generate-assets.py` before verification/build.
-- Generated audio resources are 44.1 kHz, 16-bit, stereo WAV files.
-- Release-marker scan contains no TODO, TBD, `fatalError`, mock-data or prototype-only markers in shipping Swift sources/tests.
-- `git diff --check` is clean.
-- No forced casts, `try!`, or obvious forced-unwrap patterns were found in the manual source audit.
+- Swift parser: **71 Swift files parsed successfully** across app, widget, shared, core and tests.
+- `project.yml`, `azure-pipelines.yml`, and `.github/workflows/ios-ci.yml` parse as YAML.
+- App icon JSON, widget plist, entitlements and six WAV resources pass integrity checks; WAV files are 44.1 kHz, 16-bit, stereo.
+- Release scan contains no TODO, TBD, `fatalError`, mock-data, prototype-only, `try!`, or `as!` markers in shipping Swift/core/test sources.
+- Exact current changed-file hashes were verified for the theme, Apple Intelligence compatibility adapter, World diorama, World controls, restoration reveal, Azure pipeline, and manual GitHub workflow.
+- GitHub Actions now has **no automatic push or pull-request trigger** for the expensive Xcode 27 workflow.
+- The latest automatic GitHub Actions run is the already-started pre-disable plan commit; subsequent premium/Azure commits did not start new automatic Xcode runs.
 
-## API/configuration checks against current primary documentation
+## CI strategy after GitHub Actions quota exhaustion
 
-- `SystemLanguageModel.isAvailable` is a valid Foundation Models availability convenience API.
-- Foundation Models supports image attachments in prompts in the current iOS 27-era API; that code path is isolated behind an iOS 27 availability gate.
-- SwiftData's named `ModelConfiguration` initializer supports `groupContainer` and `cloudKitDatabase`; `.automatic` is valid for entitlement-driven App Group/CloudKit discovery.
-- XcodeGen supports local Swift package paths and target dependencies with `embed`/`codeSign` controls.
-- The CI iOS build job targets GitHub's `xcode-27` runner because the project intentionally contains an iOS 27 multimodal enhancement while retaining an iOS 18 app baseline.
+### Azure Pipelines — normal development lane
 
-## Not yet proven from this Linux environment
+`azure-pipelines.yml` is configured to:
+
+- use Microsoft-hosted `macOS-26`,
+- choose the newest installed Xcode 26.x,
+- run the 22-test core suite,
+- generate deterministic assets,
+- generate the Xcode project,
+- validate WidgetKit metadata,
+- build AfterStorm + widget for the iOS Simulator with signing disabled,
+- fail on Xcode warnings,
+- boot an iPhone simulator,
+- install and launch AfterStorm,
+- capture First Quest / Quest Complete / Restoration / Main Progress screenshots,
+- scan the runtime log for crash/watchdog/Metal termination patterns,
+- publish Xcode logs and simulator screenshots as Azure artifacts.
+
+The iOS 27 multimodal Foundation Models image path is compiler/availability-gated so Xcode 26 can build the complete app while Scan My World keeps its Vision/local fallback.
+
+### GitHub Actions — manual release lane
+
+`.github/workflows/ios-ci.yml` is `workflow_dispatch` only and retains the Xcode 27 build/simulator/screenshot lane for deliberate release checks. Routine commits no longer launch the expensive GitHub macOS runner.
+
+## Remaining release gates
 
 These are release gates, not hidden implementation omissions:
 
-1. Xcode 27 type-check/compile of the iOS app and widget.
-2. iPhone simulator launch and first-run/returning-user visual inspection.
+1. Complete the one-time Azure DevOps connection to `wscott2k26/AfterStorm` and run `/azure-pipelines.yml` on this feature branch.
+2. Review the **new premium World** screenshot artifact from that Azure run and fix any visual/compile issue it reveals.
 3. Physical-device camera, microphone, speech, haptics and audio behavior.
 4. Apple Intelligence behavior on eligible hardware and fallback behavior on ineligible/disabled devices.
 5. Live CloudKit/App Group entitlements under the Storm and Me Studios Apple team.
 6. App Store Connect creation/testing of the monthly/yearly AfterStorm+ product identifiers.
 7. TestFlight signing/archive/submission.
 
-The branch must remain unmerged until item 1 is green and the primary loop has been visually inspected in iOS.
+`main` remains protected until gates 1–2 are green.
 
 ## External identifiers to configure
 
@@ -77,6 +111,6 @@ The branch must remain unmerged until item 1 is green and the primary loop has b
 
 ## Release decision
 
-**Status: V1 release-candidate source checkpoint, pending the macOS/Xcode gate.**
+**Status: Premium V1 feature branch implemented and locally verified; prior Xcode 27 baseline green; current premium World head awaiting its first Azure macOS build + simulator screenshot review.**
 
-Do not merge to `main`, archive, or submit to TestFlight until the Xcode 27 simulator build is green.
+Do not merge to `main`, archive, or submit to TestFlight until the Azure build/screenshot gate for the current head is green.
