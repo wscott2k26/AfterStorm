@@ -10,7 +10,7 @@ pr:
       - main
 
 pool:
-  vmImage: 'macOS-26'
+  vmImage: 'macOS-15'
 
 variables:
   derivedDataPath: '$(Build.SourcesDirectory)/DerivedData'
@@ -22,28 +22,25 @@ steps:
 
   - bash: |
       set -euo pipefail
-      XCODE_APP="$(python3 - <<'PY'
-      import pathlib, re
-      candidates = []
-      for path in pathlib.Path('/Applications').glob('Xcode_26*.app'):
-          match = re.search(r'Xcode_(\d+(?:\.\d+)*)', path.name)
-          if not match:
-              continue
-          version = tuple(int(part) for part in match.group(1).split('.'))
-          candidates.append((version, str(path)))
-      candidates.sort()
-      print(candidates[-1][1] if candidates else '')
-      PY
-      )"
-      if [ -z "$XCODE_APP" ]; then
-        echo 'No Xcode 26 installation was found on the hosted macOS image.' >&2
+      XCODE_APP='/Applications/Xcode_26.3.app'
+      if [ ! -d "$XCODE_APP" ]; then
+        echo "Required Xcode not found: $XCODE_APP" >&2
+        ls -1 /Applications/Xcode*.app || true
         exit 1
       fi
-      echo "Using $XCODE_APP"
       sudo xcode-select -s "$XCODE_APP/Contents/Developer"
+      echo '=== Host ==='
+      sw_vers
+      uname -m
+      echo '=== Xcode ==='
       xcodebuild -version
       swift --version
-    displayName: 'Select newest installed Xcode 26'
+
+      # Runner-images documents this as the workaround for hosted macOS jobs
+      # that report simulator connection problems after switching Xcode.
+      xcrun simctl list > /dev/null
+      echo 'CoreSimulator service initialized.'
+    displayName: 'Select Xcode 26.3 and initialize CoreSimulator'
 
   - bash: |
       set -euo pipefail
@@ -94,12 +91,12 @@ steps:
         if [ -s azure-screens/xcode-errors.txt ]; then
           cat azure-screens/xcode-errors.txt
         else
-          echo 'No literal compiler error lines were found; inspect xcodebuild-tail.txt.'
+          echo 'No literal compiler error lines were found.'
         fi
       else
         echo 'xcodebuild.log was not created.' > azure-screens/xcode-errors.txt
       fi
-    displayName: 'Collect Xcode failure diagnostics'
+    displayName: 'Collect Xcode diagnostics'
     condition: always()
 
   - bash: |
@@ -112,100 +109,96 @@ steps:
     displayName: 'Require warning-clean Xcode build'
 
   - bash: |
-      set -euxo pipefail
+      set -euo pipefail
       mkdir -p azure-screens
       : > azure-screens/simulator-boot.log
-      rm -f azure-screens/selected-simulator.env
 
-      python3 - <<'PY'
-      import json
-      import re
-      import subprocess
-      import sys
-      from pathlib import Path
+      xcrun simctl shutdown all >> azure-screens/simulator-boot.log 2>&1 || true
+      xcrun simctl delete unavailable >> azure-screens/simulator-boot.log 2>&1 || true
+      xcrun simctl list > /dev/null
 
-      log_path = Path('azure-screens/simulator-boot.log')
-      env_path = Path('azure-screens/selected-simulator.env')
+      RUNTIME='com.apple.CoreSimulator.SimRuntime.iOS-26-2'
+      DEVICE_TYPE='com.apple.CoreSimulator.SimDeviceType.iPhone-17'
 
-      def log(message):
-          print(message, flush=True)
-          with log_path.open('a', encoding='utf-8') as handle:
-              handle.write(message + '\n')
-
-      def run_logged(command, *, timeout=None, check=False):
-          with log_path.open('a', encoding='utf-8') as handle:
-              return subprocess.run(
-                  command,
-                  stdout=handle,
-                  stderr=subprocess.STDOUT,
-                  timeout=timeout,
-                  check=check,
-                  text=True,
-              )
-
-      data = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '-j']))
-      candidates = []
-      for runtime, devices in data.get('devices', {}).items():
-          if 'iOS' not in runtime:
-              continue
-          match = re.search(r'iOS-(\d+)(?:-(\d+))?', runtime)
-          version = (int(match.group(1)), int(match.group(2) or 0)) if match else (0, 0)
-          for device in devices:
-              if device.get('isAvailable') and device.get('name', '').startswith('iPhone'):
-                  already_booted = device.get('state') == 'Booted'
-                  candidates.append((already_booted, version, device.get('name', ''), device['udid']))
-
-      candidates.sort(reverse=True)
-      if not candidates:
-          log('No available iPhone simulators were reported by simctl.')
-          run_logged(['xcrun', 'simctl', 'list', 'devices', 'available'])
-          env_path.write_text('SIMULATOR_AVAILABLE=0\n', encoding='utf-8')
-          sys.exit(0)
-
-      for attempt, (_, version, name, udid) in enumerate(candidates[:2], start=1):
-          log(f'Attempt {attempt}: {name} iOS {version[0]}.{version[1]} ({udid})')
-          run_logged(['xcrun', 'simctl', 'boot', udid])
-          try:
-              run_logged(
-                  ['xcrun', 'simctl', 'bootstatus', udid, '-b'],
-                  check=True,
-                  timeout=180,
-              )
-              log(f'Simulator became ready: {name} ({udid})')
-              safe_name = name.replace(' ', '_')
-              env_path.write_text(
-                  f'SIMULATOR_AVAILABLE=1\nUDID={udid}\nDEVICE_NAME={safe_name}\n',
-                  encoding='utf-8',
-              )
-              sys.exit(0)
-          except subprocess.TimeoutExpired:
-              log(f'Boot timed out after 180 seconds: {name} ({udid})')
-          except subprocess.CalledProcessError as exc:
-              log(f'bootstatus failed with exit {exc.returncode}: {name} ({udid})')
-
-          run_logged(['xcrun', 'simctl', 'shutdown', udid])
-
-      log('No simulator became ready after two bounded attempts. Device state follows:')
-      run_logged(['xcrun', 'simctl', 'list', 'devices', 'available'])
-      env_path.write_text('SIMULATOR_AVAILABLE=0\n', encoding='utf-8')
-      PY
-
-      cat azure-screens/selected-simulator.env
-      source azure-screens/selected-simulator.env
-
-      if [ "${SIMULATOR_AVAILABLE:-0}" != "1" ]; then
-        echo '##vso[task.logissue type=warning]Azure hosted simulator did not become ready. Build/test gate already passed; screenshot evidence is skipped for this runner.'
+      if ! xcrun simctl list runtimes | grep -q 'iOS 26.2'; then
+        echo '##vso[task.logissue type=warning]iOS 26.2 simulator runtime is not present on this hosted image. Build/test gate passed; visual evidence skipped.'
+        xcrun simctl list runtimes | tee -a azure-screens/simulator-boot.log
         exit 0
       fi
 
-      test -n "${UDID:-}"
-      echo "Selected simulator ${DEVICE_NAME:-iPhone} ($UDID)" | tee -a azure-screens/simulator-boot.log
+      if ! xcrun simctl list devicetypes | grep -q 'iPhone 17'; then
+        echo '##vso[task.logissue type=warning]iPhone 17 simulator device type is not present. Build/test gate passed; visual evidence skipped.'
+        xcrun simctl list devicetypes | tee -a azure-screens/simulator-boot.log
+        exit 0
+      fi
+
+      UDID="$(xcrun simctl create "AfterStorm-CI-$(Build.BuildId)" "$DEVICE_TYPE" "$RUNTIME")"
+      echo "Created fresh iPhone 17 simulator: $UDID" | tee -a azure-screens/simulator-boot.log
+
+      cleanup() {
+        xcrun simctl shutdown "$UDID" >> azure-screens/simulator-boot.log 2>&1 || true
+        xcrun simctl delete "$UDID" >> azure-screens/simulator-boot.log 2>&1 || true
+      }
+      trap cleanup EXIT
+
+      xcrun simctl boot "$UDID" >> azure-screens/simulator-boot.log 2>&1 || true
+
+      set +e
+      UDID="$UDID" python3 - <<'PY'
+      import json
+      import os
+      import subprocess
+      import sys
+      import time
+
+      udid = os.environ['UDID']
+      deadline = time.time() + 180
+      while time.time() < deadline:
+          result = subprocess.run(
+              ['xcrun', 'simctl', 'list', 'devices', '-j'],
+              capture_output=True,
+              text=True,
+          )
+          if result.returncode == 0:
+              try:
+                  payload = json.loads(result.stdout)
+              except json.JSONDecodeError:
+                  payload = {}
+              state = None
+              for devices in payload.get('devices', {}).values():
+                  for device in devices:
+                      if device.get('udid') == udid:
+                          state = device.get('state')
+                          break
+                  if state is not None:
+                      break
+              if state == 'Booted':
+                  ready = subprocess.run(
+                      ['xcrun', 'simctl', 'spawn', udid, 'launchctl', 'print', 'system'],
+                      stdout=subprocess.DEVNULL,
+                      stderr=subprocess.DEVNULL,
+                  )
+                  if ready.returncode == 0:
+                      print(f'Simulator ready: {udid}')
+                      sys.exit(0)
+          time.sleep(5)
+      print('Simulator did not become ready within 180 seconds.', file=sys.stderr)
+      sys.exit(2)
+      PY
+      BOOT_RESULT=$?
+      set -e
+
+      if [ "$BOOT_RESULT" -ne 0 ]; then
+        echo '##vso[task.logissue type=warning]Fresh Azure iPhone simulator did not become ready. Build/test gate passed; screenshot evidence skipped.'
+        xcrun simctl list devices available | tee -a azure-screens/simulator-boot.log
+        exit 0
+      fi
 
       APP_PATH="$(derivedDataPath)/Build/Products/Debug-iphonesimulator/AfterStorm.app"
       test -d "$APP_PATH"
       test -f "$APP_PATH/PlugIns/AfterStormWidget.appex/Info.plist"
-      xcrun simctl install "$UDID" "$APP_PATH"
 
+      xcrun simctl install "$UDID" "$APP_PATH"
       xcrun simctl launch "$UDID" com.stormandme.afterstorm | tee azure-screens/smoke-launch.txt
       sleep 4
       xcrun simctl io "$UDID" screenshot azure-screens/afterstorm-smoke.png
@@ -223,12 +216,12 @@ steps:
         > azure-screens/afterstorm-runtime.log 2>&1 || true
 
       if grep -Eq 'RBSProcessExitStatus domain:(metal|crash|watchdog)|termination reported.*com\.stormandme\.afterstorm.*domain:(metal|crash|watchdog)' azure-screens/afterstorm-runtime.log; then
-        echo 'AfterStorm terminated unexpectedly during Azure simulator acceptance.' >&2
+        echo 'AfterStorm terminated unexpectedly during simulator acceptance.' >&2
         cat azure-screens/afterstorm-runtime.log
         exit 1
       fi
-    displayName: 'Boot iPhone simulator and capture acceptance screens'
-    timeoutInMinutes: 10
+    displayName: 'Create fresh iPhone 17 and capture acceptance screens'
+    timeoutInMinutes: 8
 
   - task: PublishBuildArtifacts@1
     condition: always()
