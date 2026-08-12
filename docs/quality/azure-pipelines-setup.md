@@ -15,7 +15,11 @@ AfterStorm keeps GitHub as the source repository. Azure Pipelines becomes the no
   - validates WidgetKit metadata,
   - builds AfterStorm + widget for the iOS Simulator with signing disabled,
   - fails if Xcode emits warnings,
-  - publishes the Xcode build log as an Azure artifact.
+  - boots an available iPhone simulator,
+  - installs and smoke-launches AfterStorm,
+  - captures deterministic screenshots for **first quest**, **quest complete**, **restoration**, and **main progress**,
+  - checks the runtime log for crash/watchdog/Metal termination patterns,
+  - publishes the Xcode build log and simulator screenshots as Azure artifacts.
 
 ## One-time Azure DevOps connection
 
@@ -31,8 +35,9 @@ AfterStorm keeps GitHub as the source repository. Azure Pipelines becomes the no
 10. Select branch **feature/afterstorm-core-slice** while the work is still under review.
 11. Select path **/azure-pipelines.yml**.
 12. Save and run the pipeline.
-13. Confirm the job uses the Microsoft-hosted `macOS-26` image and reaches the steps **Run AfterStormCore tests**, **Build AfterStorm and widget for iOS Simulator**, and **Require warning-clean Xcode build**.
-14. After this feature branch is merged, edit the Azure pipeline's default branch to `main` if Azure did not update it automatically.
+13. Confirm the job reaches **Run AfterStormCore tests**, **Build AfterStorm and widget for iOS Simulator**, **Require warning-clean Xcode build**, and **Boot iPhone simulator and capture acceptance screens**.
+14. When the run completes, open its **Artifacts** section and download **afterstorm-simulator-screens**. The artifact contains the actual iPhone simulator images of the current branch, including `afterstorm-main-progress.png` for the premium World screen.
+15. After this feature branch is merged, edit the Azure pipeline's default branch to `main` if Azure did not update it automatically.
 
 ## If Microsoft-hosted parallelism is unavailable
 
@@ -47,6 +52,6 @@ New Azure DevOps organizations may not have Microsoft-hosted parallelism enabled
 
 ## Current Apple toolchain split
 
-- Azure development lane: newest Xcode 26.x installed on Microsoft-hosted `macOS-26` (currently Xcode 26.6 on the published runner image).
+- Azure development lane: newest Xcode 26.x installed on Microsoft-hosted `macOS-26`.
 - GitHub release lane: `xcode-27` runner when manually dispatched.
 - AfterStorm's iOS 27 multimodal image-understanding enhancement is compiler/availability-gated. On Xcode 26 or unsupported devices, Scan My World continues through the existing Vision/local fallback instead of blocking the app.
