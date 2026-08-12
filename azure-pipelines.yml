@@ -1,0 +1,100 @@
+trigger:
+  branches:
+    include:
+      - main
+      - feature/*
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'macOS-26'
+
+variables:
+  derivedDataPath: '$(Build.SourcesDirectory)/DerivedData'
+
+steps:
+  - checkout: self
+    clean: true
+    fetchDepth: 1
+
+  - bash: |
+      set -euo pipefail
+      XCODE_APP="$(python3 - <<'PY'
+      import pathlib, re
+      candidates = []
+      for path in pathlib.Path('/Applications').glob('Xcode_26*.app'):
+          match = re.search(r'Xcode_(\d+(?:\.\d+)*)', path.name)
+          if not match:
+              continue
+          version = tuple(int(part) for part in match.group(1).split('.'))
+          candidates.append((version, str(path)))
+      candidates.sort()
+      print(candidates[-1][1] if candidates else '')
+      PY
+      )"
+      if [ -z "$XCODE_APP" ]; then
+        echo 'No Xcode 26 installation was found on the hosted macOS image.' >&2
+        exit 1
+      fi
+      echo "Using $XCODE_APP"
+      sudo xcode-select -s "$XCODE_APP/Contents/Developer"
+      xcodebuild -version
+      swift --version
+    displayName: 'Select newest installed Xcode 26'
+
+  - bash: |
+      set -euo pipefail
+      swift test
+    displayName: 'Run AfterStormCore tests'
+
+  - bash: |
+      set -euo pipefail
+      python3 scripts/generate-assets.py
+    displayName: 'Generate deterministic app assets'
+
+  - bash: |
+      set -euo pipefail
+      if ! command -v xcodegen >/dev/null 2>&1; then
+        brew install xcodegen
+      fi
+      xcodegen --version
+      xcodegen generate
+    displayName: 'Generate Xcode project'
+
+  - bash: |
+      set -euo pipefail
+      test "$(plutil -extract NSExtension.NSExtensionPointIdentifier raw AfterStormWidget/Info.plist)" = "com.apple.widgetkit-extension"
+    displayName: 'Verify WidgetKit metadata'
+
+  - bash: |
+      set -o pipefail
+      xcodebuild \
+        -project AfterStorm.xcodeproj \
+        -scheme AfterStorm \
+        -configuration Debug \
+        -sdk iphonesimulator \
+        -destination 'generic/platform=iOS Simulator' \
+        -derivedDataPath "$(derivedDataPath)" \
+        CODE_SIGNING_ALLOWED=NO \
+        build | tee xcodebuild.log
+    displayName: 'Build AfterStorm and widget for iOS Simulator'
+
+  - bash: |
+      set -euo pipefail
+      if grep -n 'warning:' xcodebuild.log; then
+        echo 'Xcode build emitted warnings.' >&2
+        exit 1
+      fi
+      echo 'AfterStorm Azure build is warning-clean.'
+    displayName: 'Require warning-clean Xcode build'
+
+  - task: PublishBuildArtifacts@1
+    condition: always()
+    inputs:
+      PathtoPublish: 'xcodebuild.log'
+      ArtifactName: 'afterstorm-xcode-log'
+      publishLocation: 'Container'
+    displayName: 'Publish Xcode build log'
