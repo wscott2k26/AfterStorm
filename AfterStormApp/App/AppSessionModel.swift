@@ -37,6 +37,13 @@ final class AppSessionModel {
         ProgressInsights(history: completionHistory, nodes: restorationNodes)
     }
 
+    var restorationFraction: Double {
+        let restored = restorationNodes.reduce(0) { $0 + $1.stage }
+        let total = max(24, restorationNodes.reduce(0) { $0 + $1.maxStage })
+        guard total > 0 else { return 0 }
+        return min(1, Double(restored) / Double(total))
+    }
+
     var unlockedCollectibles: [Collectible] {
         CollectibleCatalog.unlocked(completedQuestCount: progress.completedQuestCount, sparks: progress.sparks)
     }
