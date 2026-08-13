@@ -6,8 +6,12 @@ struct WorldHomeView: View {
     let onGiveQuest: () -> Void
     let onScan: () -> Void
     let onTell: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var preferences = ExperiencePreferences.shared
     @State private var showingMap = false
     @State private var showingResidents = false
+    @State private var drifting = false
 
     private var restoredStages: Int {
         model.restorationNodes.reduce(0) { $0 + $1.stage }
@@ -38,10 +42,38 @@ struct WorldHomeView: View {
         }
     }
 
+    private var worldMotionAllowed: Bool {
+        preferences.allowsMotion(systemReduceMotion: reduceMotion)
+    }
+
+    private var animatedWeatherAllowed: Bool {
+        worldMotionAllowed && preferences.weatherParticlesEnabled
+    }
+
+    private var cameraMotionAllowed: Bool {
+        worldMotionAllowed && preferences.cameraMotionEnabled
+    }
+
+    private var cameraOffset: CGSize {
+        guard cameraMotionAllowed else { return .zero }
+        let strength = CGFloat(preferences.cinematicStrength)
+        return CGSize(
+            width: drifting ? 3.5 * strength : -3.5 * strength,
+            height: drifting ? -1.8 * strength : 1.8 * strength
+        )
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             WorldDioramaView(nodes: model.restorationNodes, progressSparks: model.progress.sparks)
                 .ignoresSafeArea()
+                .environment(\.accessibilityReduceMotion, !animatedWeatherAllowed)
+                .offset(cameraOffset)
+                .scaleEffect(cameraMotionAllowed ? (drifting ? 1.006 : 1.0) : 1)
+                .animation(
+                    cameraMotionAllowed ? .easeInOut(duration: 3.6).repeatForever(autoreverses: true) : .default,
+                    value: drifting
+                )
 
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .center) {
@@ -82,7 +114,7 @@ struct WorldHomeView: View {
                 }
 
                 Button {
-                    HapticsService.tap()
+                    HapticsService.questAccepted()
                     onGiveQuest()
                 } label: {
                     Label("Give Me a Quest", systemImage: "bolt.fill")
@@ -109,9 +141,18 @@ struct WorldHomeView: View {
         }
         .sheet(isPresented: $showingMap) { RestorationMapView(model: model) }
         .sheet(isPresented: $showingResidents) { ResidentsView(model: model) }
-        .onAppear { AudioService.shared.updateWorldAmbience(restorationFraction: restorationFraction) }
+        .onAppear {
+            AudioService.shared.updateWorldAmbience(restorationFraction: restorationFraction)
+            if cameraMotionAllowed { drifting = true }
+        }
         .onChange(of: restorationFraction) { _, fraction in
             AudioService.shared.updateWorldAmbience(restorationFraction: fraction)
+        }
+        .onChange(of: preferences.ambienceEnabled) { _, _ in
+            AudioService.shared.refreshPreferences(restorationFraction: restorationFraction)
+        }
+        .onChange(of: cameraMotionAllowed) { _, enabled in
+            drifting = enabled
         }
         .onDisappear { AudioService.shared.stopWorldAmbience() }
     }
