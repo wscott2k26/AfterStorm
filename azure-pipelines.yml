@@ -20,3 +20,81 @@ steps:
   - checkout: self
     clean: true
     fetchDepth: 1
+
+  - bash: |
+      set -euo pipefail
+      XCODE_APP='/Applications/Xcode_26.3.app'
+      if [ ! -d "$XCODE_APP" ]; then
+        echo "Required Xcode not found: $XCODE_APP" >&2
+        ls -1 /Applications/Xcode*.app || true
+        exit 1
+      fi
+      sudo xcode-select -s "$XCODE_APP/Contents/Developer"
+      xcodebuild -version
+      swift --version
+    displayName: 'Select Xcode 26.3'
+
+  - bash: |
+      set -euo pipefail
+      swift test
+    displayName: 'Run AfterStormCore tests'
+
+  - bash: |
+      set -euo pipefail
+      python3 scripts/generate-assets.py
+    displayName: 'Generate deterministic app assets'
+
+  - bash: |
+      set -euo pipefail
+      if ! command -v xcodegen >/dev/null 2>&1; then
+        brew install xcodegen
+      fi
+      xcodegen generate
+    displayName: 'Generate Xcode project'
+
+  - bash: |
+      set -o pipefail
+      mkdir -p "$(artifactDir)"
+      : > xcodebuild.log
+      xcodebuild \
+        -project AfterStorm.xcodeproj \
+        -scheme AfterStorm \
+        -configuration Debug \
+        -sdk iphonesimulator \
+        -destination 'generic/platform=iOS Simulator' \
+        -derivedDataPath "$(derivedDataPath)" \
+        CODE_SIGNING_ALLOWED=NO \
+        build | tee xcodebuild.log
+    displayName: 'Build AfterStorm and widget for iOS Simulator'
+
+  - bash: |
+      set -euo pipefail
+      mkdir -p "$(artifactDir)"
+      APP_PATH="$(derivedDataPath)/Build/Products/Debug-iphonesimulator/AfterStorm.app"
+      test -d "$APP_PATH"
+      test -f "$APP_PATH/Info.plist"
+      test -f "$APP_PATH/PlugIns/AfterStormWidget.appex/Info.plist"
+      OUTPUT="$(artifactDir)/AfterStorm-simulator.app.zip"
+      rm -f "$OUTPUT"
+      /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$OUTPUT"
+      test -s "$OUTPUT"
+      /usr/bin/unzip -l "$OUTPUT" | grep -q 'AfterStorm.app/Info.plist'
+      /usr/bin/unzip -l "$OUTPUT" | grep -q 'AfterStorm.app/PlugIns/AfterStormWidget.appex/Info.plist'
+      /usr/bin/shasum -a 256 "$OUTPUT" | tee "$(artifactDir)/AfterStorm-simulator.sha256"
+    displayName: 'Package AfterStorm simulator app for browser testing'
+
+  - task: PublishBuildArtifacts@1
+    condition: always()
+    inputs:
+      PathtoPublish: 'xcodebuild.log'
+      ArtifactName: 'afterstorm-xcode-log'
+      publishLocation: 'Container'
+    displayName: 'Publish Xcode build log'
+
+  - task: PublishBuildArtifacts@1
+    condition: always()
+    inputs:
+      PathtoPublish: 'azure-artifacts'
+      ArtifactName: 'afterstorm-simulator-build'
+      publishLocation: 'Container'
+    displayName: 'Publish AfterStorm simulator build'
