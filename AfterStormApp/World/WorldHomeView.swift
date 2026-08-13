@@ -67,7 +67,12 @@ struct WorldHomeView: View {
         ZStack(alignment: .bottom) {
             WorldDioramaView(nodes: model.restorationNodes, progressSparks: model.progress.sparks)
                 .ignoresSafeArea()
-                .environment(\.accessibilityReduceMotion, !animatedWeatherAllowed)
+                .id("world-motion-\(animatedWeatherAllowed)")
+                .transaction { transaction in
+                    if !animatedWeatherAllowed {
+                        transaction.disablesAnimations = true
+                    }
+                }
                 .offset(cameraOffset)
                 .scaleEffect(cameraMotionAllowed ? (drifting ? 1.006 : 1.0) : 1)
                 .animation(
@@ -114,7 +119,7 @@ struct WorldHomeView: View {
                 }
 
                 Button {
-                    HapticsService.questAccepted()
+                    HapticsService.tap()
                     onGiveQuest()
                 } label: {
                     Label("Give Me a Quest", systemImage: "bolt.fill")
