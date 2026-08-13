@@ -6,6 +6,12 @@ struct AvatarPreviewView: View {
     let style: AvatarStyle
     var size: CGFloat = 150
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var preferences = ExperiencePreferences.shared
+    @State private var floating = false
+    @State private var blinking = false
+    @State private var aura = false
+
     private var accent: Color {
         switch style.palette {
         case .stormBlue: AfterStormTheme.rainBlue
@@ -15,18 +21,59 @@ struct AvatarPreviewView: View {
         }
     }
 
+    private var animationEnabled: Bool {
+        preferences.avatarAnimationEnabled && preferences.allowsMotion(systemReduceMotion: reduceMotion)
+    }
+
+    private var motionStrength: CGFloat {
+        CGFloat(preferences.cinematicStrength)
+    }
+
+    private var animationTaskID: String {
+        "\(animationEnabled)-\(preferences.intensity.rawValue)-\(preferences.avatarAnimationEnabled)"
+    }
+
     var body: some View {
         ZStack {
-            Circle().fill(accent.opacity(0.15))
-            Circle().stroke(accent.opacity(0.4), lineWidth: 1)
-            if kind == .stormling {
-                StormlingShape(accent: accent, style: style)
-            } else {
-                HumanShape(accent: accent, style: style)
+            Circle()
+                .fill(accent.opacity(aura && animationEnabled ? 0.21 : 0.15))
+            Circle()
+                .stroke(accent.opacity(aura && animationEnabled ? 0.55 : 0.4), lineWidth: 1)
+
+            Group {
+                if kind == .stormling {
+                    StormlingShape(accent: accent, style: style, blink: blinking)
+                } else {
+                    HumanShape(accent: accent, style: style, blink: blinking)
+                }
             }
+            .offset(y: animationEnabled ? (floating ? -3 * motionStrength : 2 * motionStrength) : 0)
+            .scaleEffect(animationEnabled ? (floating ? 1.012 : 0.996) : 1)
         }
         .frame(width: size, height: size)
-        .shadow(color: accent.opacity(0.25), radius: 22, y: 8)
+        .shadow(color: accent.opacity(aura && animationEnabled ? 0.36 : 0.25), radius: aura && animationEnabled ? 28 : 22, y: 8)
+        .animation(animationEnabled ? .easeInOut(duration: 1.9).repeatForever(autoreverses: true) : .default, value: floating)
+        .animation(animationEnabled && preferences.intensity == .cinematic ? .easeInOut(duration: 2.4).repeatForever(autoreverses: true) : .default, value: aura)
+        .task(id: animationTaskID) {
+            guard animationEnabled else {
+                floating = false
+                blinking = false
+                aura = false
+                return
+            }
+
+            floating = true
+            aura = preferences.intensity == .cinematic
+
+            while !Task.isCancelled && animationEnabled {
+                let delay = Int.random(in: 2400...4200)
+                try? await Task.sleep(for: .milliseconds(delay))
+                guard !Task.isCancelled && animationEnabled else { return }
+                withAnimation(.easeOut(duration: 0.08)) { blinking = true }
+                try? await Task.sleep(for: .milliseconds(110))
+                withAnimation(.easeIn(duration: 0.10)) { blinking = false }
+            }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(kind == .stormling ? "Customized Stormling avatar preview" : "Customized human avatar preview")
     }
@@ -35,6 +82,7 @@ struct AvatarPreviewView: View {
 private struct StormlingShape: View {
     let accent: Color
     let style: AvatarStyle
+    let blink: Bool
 
     private var cloudScale: CGSize {
         switch style.headShape {
@@ -66,8 +114,16 @@ private struct StormlingShape: View {
                 }
             }
 
-            Circle().fill(.white.opacity(0.94)).frame(width: eyeSize, height: style.eyeStyle == .calm ? 4 : eyeSize).offset(x: -19, y: 4)
-            Circle().fill(.white.opacity(0.94)).frame(width: eyeSize, height: style.eyeStyle == .calm ? 4 : eyeSize).offset(x: 19, y: 4)
+            Circle()
+                .fill(.white.opacity(0.94))
+                .frame(width: eyeSize, height: style.eyeStyle == .calm ? 4 : eyeSize)
+                .scaleEffect(x: 1, y: blink ? 0.12 : 1)
+                .offset(x: -19, y: 4)
+            Circle()
+                .fill(.white.opacity(0.94))
+                .frame(width: eyeSize, height: style.eyeStyle == .calm ? 4 : eyeSize)
+                .scaleEffect(x: 1, y: blink ? 0.12 : 1)
+                .offset(x: 19, y: 4)
             Capsule().fill(.black.opacity(0.35)).frame(width: 22, height: 4).offset(y: 24)
             accessory
         }
@@ -86,6 +142,7 @@ private struct StormlingShape: View {
 private struct HumanShape: View {
     let accent: Color
     let style: AvatarStyle
+    let blink: Bool
 
     private var skin: Color {
         switch style.skinTone {
@@ -106,6 +163,7 @@ private struct HumanShape: View {
                 Capsule().fill(.white.opacity(0.92)).frame(width: 7, height: eyeHeight)
                 Capsule().fill(.white.opacity(0.92)).frame(width: 7, height: eyeHeight)
             }
+            .scaleEffect(x: 1, y: blink ? 0.12 : 1)
             .offset(y: -31)
 
             RoundedRectangle(cornerRadius: 28).fill(accent.gradient).frame(width: 72, height: 82).offset(y: 33)
