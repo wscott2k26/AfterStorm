@@ -16,6 +16,13 @@ enum AfterStormTheme {
     static let deepSky = Color(red: 0.035, green: 0.055, blue: 0.10)
     static let stormBlue = Color(red: 0.12, green: 0.20, blue: 0.31)
     static let rainBlue = Color(red: 0.24, green: 0.49, blue: 0.67)
+    static let electricBlue = Color(red: 0.24, green: 0.62, blue: 0.94)
+    static let stormTeal = Color(red: 0.18, green: 0.70, blue: 0.72)
+    static let glassSilver = Color(red: 0.72, green: 0.82, blue: 0.88)
+    static let stormViolet = Color(red: 0.24, green: 0.22, blue: 0.40)
+    static let afterglowRose = Color(red: 0.80, green: 0.43, blue: 0.45)
+    static let glassEdge = Color.white.opacity(0.62)
+
     static let afterglow = Color(red: 0.98, green: 0.72, blue: 0.34)
     static let spark = Color(red: 1.00, green: 0.82, blue: 0.36)
     static let restoredGreen = Color(red: 0.28, green: 0.65, blue: 0.46)
