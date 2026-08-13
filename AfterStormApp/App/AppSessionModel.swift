@@ -136,7 +136,7 @@ final class AppSessionModel {
         syncFromCore()
         if unlockedCollectibles.count > unlockCountBefore {
             AudioService.shared.playUnlock()
-            HapticsService.unlock()
+            HapticsService.collectibleUnlock()
         }
         persist()
         return activeQuest
