@@ -5,6 +5,7 @@ struct MeView: View {
     @State private var showingResidents = false
     @State private var showingPlus = false
     @State private var showingPrivacy = false
+    @State private var showingSettings = false
     @State private var showingAvatarStudio = false
     @State private var showingLifeAreas = false
 
@@ -22,6 +23,7 @@ struct MeView: View {
 
                     menuButton("What I’m Restoring", "slider.horizontal.3") { showingLifeAreas = true }
                     menuButton("Residents", "person.3.fill") { showingResidents = true }
+                    menuButton("Settings", "gearshape.fill") { showingSettings = true }
                     menuButton("AfterStorm+", "sparkles.rectangle.stack.fill") { showingPlus = true }
                     menuButton("Privacy & Data", "hand.raised.fill") { showingPrivacy = true }
                 }.padding(18)
@@ -29,6 +31,7 @@ struct MeView: View {
             .background(AfterStormTheme.worldGradient.ignoresSafeArea())
             .navigationTitle("Me")
             .sheet(isPresented: $showingResidents) { ResidentsView(model: model) }
+            .sheet(isPresented: $showingSettings) { SettingsView() }
             .sheet(isPresented: $showingPlus) { AfterStormPlusView() }
             .sheet(isPresented: $showingPrivacy) { PrivacyView() }
             .sheet(isPresented: $showingAvatarStudio) {
