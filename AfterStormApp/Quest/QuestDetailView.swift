@@ -48,8 +48,17 @@ struct QuestDetailView: View {
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
 
             Spacer()
-            Button("Start Quest") { HapticsService.tap(); onStart() }.buttonStyle(PremiumButtonStyle())
-            Button("Swap Quest") { HapticsService.tap(); onSwap() }.buttonStyle(PremiumButtonStyle(prominent: false))
+            Button("Start Quest") {
+                HapticsService.questAccepted()
+                onStart()
+            }
+            .buttonStyle(PremiumButtonStyle())
+
+            Button("Swap Quest") {
+                HapticsService.tap()
+                onSwap()
+            }
+            .buttonStyle(PremiumButtonStyle(prominent: false))
         }
         .padding(24)
     }
