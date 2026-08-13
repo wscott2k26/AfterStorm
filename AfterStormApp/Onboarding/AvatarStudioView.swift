@@ -58,7 +58,8 @@ struct AvatarStudioView: View {
                 Text("Your look can change later as you unlock more of The Block.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .padding(.bottom, 12)
+
+                Color.clear.frame(height: 28)
             }
             .padding(22)
         }
@@ -93,21 +94,46 @@ struct AvatarStudioView: View {
     }
 
     private func picker<T: Hashable>(_ title: String, options: [T], selection: Binding<T>, label: @escaping (T) -> String) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let columns = [GridItem(.adaptive(minimum: 88), spacing: 8)]
+
+        return VStack(alignment: .leading, spacing: 10) {
             Text(title).font(.headline)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(options, id: \.self) { option in
-                        Button(label(option)) {
-                            HapticsService.tap()
-                            withAnimation(AfterStormTheme.quickSpring) { selection.wrappedValue = option }
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
+                ForEach(options, id: \.self) { option in
+                    Button {
+                        HapticsService.tap()
+                        withAnimation(AfterStormTheme.quickSpring) {
+                            selection.wrappedValue = option
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(selection.wrappedValue == option ? AfterStormTheme.rainBlue : .gray.opacity(0.35))
-                        .scaleEffect(selection.wrappedValue == option ? 1.035 : 1)
-                        .animation(AfterStormTheme.quickSpring, value: selection.wrappedValue == option)
-                        .accessibilityAddTraits(selection.wrappedValue == option ? .isSelected : [])
+                    } label: {
+                        Text(label(option))
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 9)
                     }
+                    .buttonStyle(.plain)
+                    .background(
+                        selection.wrappedValue == option ? AfterStormTheme.rainBlue.opacity(0.92) : .white.opacity(0.10),
+                        in: Capsule()
+                    )
+                    .overlay {
+                        Capsule()
+                            .stroke(
+                                selection.wrappedValue == option ? AfterStormTheme.spark.opacity(0.70) : .white.opacity(0.10),
+                                lineWidth: 1
+                            )
+                    }
+                    .scaleEffect(selection.wrappedValue == option ? 1.035 : 1)
+                    .shadow(
+                        color: selection.wrappedValue == option ? AfterStormTheme.rainBlue.opacity(0.22) : .clear,
+                        radius: 10,
+                        y: 4
+                    )
+                    .animation(AfterStormTheme.quickSpring, value: selection.wrappedValue == option)
+                    .accessibilityAddTraits(selection.wrappedValue == option ? .isSelected : [])
                 }
             }
         }
