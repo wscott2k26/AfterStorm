@@ -25,9 +25,7 @@ final class BuildCompatibilityTests: XCTestCase {
         let avatarStudio = try source("AfterStormApp/Onboarding/AvatarStudioView.swift")
 
         XCTAssertTrue(lifeArea.contains(".safeAreaInset(edge: .bottom)"))
-        XCTAssertTrue(lifeArea.contains(".background(.ultraThinMaterial"))
         XCTAssertTrue(avatarStudio.contains(".safeAreaInset(edge: .bottom)"))
-        XCTAssertTrue(avatarStudio.contains(".background(.ultraThinMaterial"))
     }
 
     func testStudioIntroUsesCloudFirstRetainedLightningSequence() throws {
@@ -93,6 +91,49 @@ final class BuildCompatibilityTests: XCTestCase {
         XCTAssertTrue(world.contains("ExperiencePreferences.shared"))
         XCTAssertTrue(world.contains("weatherParticlesEnabled"))
         XCTAssertTrue(world.contains("cameraMotionEnabled"))
+    }
+
+    func testReactiveVisualStateExposesLuxuryPalette() throws {
+        let visual = try source("AfterStormApp/Design/RestorationVisualState.swift")
+        let theme = try source("AfterStormApp/Design/AfterStormTheme.swift")
+
+        for token in [
+            "struct RestorationVisualState", "restorationFraction", "accentPrimary",
+            "accentSecondary", "glassTint", "stormIntensity", "afterglowIntensity",
+            "glowIntensity", "backgroundColors"
+        ] {
+            XCTAssertTrue(visual.contains(token), "Missing visual-state token: \(token)")
+        }
+        XCTAssertTrue(theme.contains("stormTeal"))
+        XCTAssertTrue(theme.contains("glassSilver"))
+        XCTAssertTrue(theme.contains("afterglowRose"))
+    }
+
+    func testAdaptiveStormAndGlassPrimitivesAreLayered() throws {
+        let storm = try source("AfterStormApp/Design/AdaptiveStormBackground.swift")
+        let glass = try source("AfterStormApp/Design/AdaptiveGlassSurface.swift")
+
+        XCTAssertTrue(storm.contains("ExperiencePreferences.shared"))
+        XCTAssertTrue(storm.contains("LinearGradient"))
+        XCTAssertTrue(storm.contains("blur(radius:"))
+        XCTAssertTrue(storm.contains("mist"))
+        XCTAssertTrue(glass.contains(".ultraThinMaterial"))
+        XCTAssertTrue(glass.contains("LinearGradient"))
+        XCTAssertTrue(glass.contains("shadow"))
+        XCTAssertTrue(glass.contains("adaptiveGlass"))
+    }
+
+    func testHighImpactScreensConsumeAdaptiveLuxurySystem() throws {
+        let avatarStudio = try source("AfterStormApp/Onboarding/AvatarStudioView.swift")
+        let quest = try source("AfterStormApp/Quest/QuestDetailView.swift")
+        let world = try source("AfterStormApp/World/WorldHomeView.swift")
+        let me = try source("AfterStormApp/Main/MeView.swift")
+
+        XCTAssertTrue(avatarStudio.contains("AdaptiveStormBackground"))
+        XCTAssertTrue(avatarStudio.contains("adaptiveGlass"))
+        XCTAssertTrue(quest.contains("AdaptiveStormBackground"))
+        XCTAssertTrue(world.contains("adaptiveGlass"))
+        XCTAssertTrue(me.contains("adaptiveGlass"))
     }
 
     private var repositoryRoot: URL {
