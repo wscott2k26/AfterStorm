@@ -87,7 +87,7 @@ final class BuildCompatibilityTests: XCTestCase {
 
     func testAvatarAndWorldReadSensoryPreferences() throws {
         let avatar = try source("AfterStormApp/Onboarding/AvatarPreviewView.swift")
-        let world = try source("AfterStormApp/World/WorldDioramaView.swift")
+        let world = try source("AfterStormApp/World/WorldHomeView.swift")
         XCTAssertTrue(avatar.contains("ExperiencePreferences.shared"))
         XCTAssertTrue(avatar.contains("avatarAnimationEnabled"))
         XCTAssertTrue(world.contains("ExperiencePreferences.shared"))
