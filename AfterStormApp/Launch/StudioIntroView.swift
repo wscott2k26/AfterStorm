@@ -2,6 +2,7 @@ import SwiftUI
 
 struct StudioIntroView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var preferences = ExperiencePreferences.shared
     @State private var cloudVisible = false
     @State private var lightningVisible = false
     @State private var lightningLocked = false
@@ -11,6 +12,10 @@ struct StudioIntroView: View {
     @State private var lightningOffset: CGFloat = -130
     let onFinished: () -> Void
 
+    private var motionAllowed: Bool {
+        preferences.allowsMotion(systemReduceMotion: reduceMotion)
+    }
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
@@ -19,13 +24,13 @@ struct StudioIntroView: View {
                 .fill(AfterStormTheme.stormBlue.opacity(0.48))
                 .frame(width: 390, height: 390)
                 .blur(radius: 70)
-                .offset(x: drift ? 90 : -70, y: -80)
+                .offset(x: motionAllowed && drift ? 90 : -70, y: -80)
 
             Circle()
                 .fill(AfterStormTheme.rainBlue.opacity(0.32))
                 .frame(width: 300, height: 300)
                 .blur(radius: 60)
-                .offset(x: drift ? -90 : 70, y: 70)
+                .offset(x: motionAllowed && drift ? -90 : 70, y: 70)
 
             VStack(spacing: 16) {
                 ZStack {
@@ -40,9 +45,9 @@ struct StudioIntroView: View {
                         .shadow(color: AfterStormTheme.rainBlue.opacity(0.36), radius: 24, y: 10)
                         .opacity(cloudVisible ? 1 : 0)
                         .scaleEffect(cloudVisible ? 1 : 0.76)
-                        .offset(y: reduceMotion ? 0 : (drift ? -2 : 2))
+                        .offset(y: motionAllowed ? (drift ? -2 : 2) : 0)
 
-                    if lightningVisible {
+                    if lightningVisible && preferences.lightningEffectsEnabled {
                         Image(systemName: "bolt.fill")
                             .font(.system(size: 68, weight: .black))
                             .foregroundStyle(.white)
@@ -82,7 +87,7 @@ struct StudioIntroView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Storm and Me Studios")
         .task {
-            if reduceMotion {
+            guard motionAllowed else {
                 cloudVisible = true
                 lightningLocked = true
                 wordmarkVisible = true
@@ -100,20 +105,26 @@ struct StudioIntroView: View {
             }
 
             try? await Task.sleep(for: .milliseconds(430))
-            AudioService.shared.playIntroThunder()
-            lightningOffset = -130
-            withAnimation(.easeOut(duration: 0.06)) {
-                lightningVisible = true
-            }
-            HapticsService.restorationImpact()
-            withAnimation(.easeIn(duration: 0.12)) {
-                lightningOffset = -2
-            }
 
-            try? await Task.sleep(for: .milliseconds(120))
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
-                lightningVisible = false
-                lightningLocked = true
+            if preferences.lightningEffectsEnabled {
+                AudioService.shared.playIntroThunder()
+                lightningOffset = -130
+                withAnimation(.easeOut(duration: 0.06)) {
+                    lightningVisible = true
+                }
+                HapticsService.restorationImpact()
+                withAnimation(.easeIn(duration: 0.12)) {
+                    lightningOffset = -2
+                }
+                try? await Task.sleep(for: .milliseconds(120))
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+                    lightningVisible = false
+                    lightningLocked = true
+                }
+            } else {
+                withAnimation(.easeOut(duration: 0.35)) {
+                    lightningLocked = true
+                }
             }
 
             try? await Task.sleep(for: .milliseconds(260))
