@@ -109,6 +109,25 @@ final class BuildCompatibilityTests: XCTestCase {
         XCTAssertTrue(theme.contains("afterglowRose"))
     }
 
+    func testReactiveVisualStateIsContinuousAndInjectedAtRoot() throws {
+        let environmentURL = repositoryRoot.appendingPathComponent("AfterStormApp/Design/AdaptiveVisualEnvironment.swift")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: environmentURL.path), "Adaptive visual environment must exist.")
+        guard FileManager.default.fileExists(atPath: environmentURL.path) else { return }
+
+        let visual = try source("AfterStormApp/Design/RestorationVisualState.swift")
+        let environment = try source("AfterStormApp/Design/AdaptiveVisualEnvironment.swift")
+        let model = try source("AfterStormApp/App/AppSessionModel.swift")
+        let root = try source("AfterStormApp/App/RootView.swift")
+
+        for token in ["stormWeight", "clearingWeight", "afterglowWeight", "glassOpacity", "interpolatedColor"] {
+            XCTAssertTrue(visual.contains(token), "Missing continuous visual token: \(token)")
+        }
+        XCTAssertFalse(visual.contains("restorationFraction < 0.5 ?"), "Visual progression must not be one hard 50 percent switch.")
+        XCTAssertTrue(environment.contains("afterStormVisualState"))
+        XCTAssertTrue(model.contains("var restorationFraction: Double"))
+        XCTAssertTrue(root.contains(".environment(\\.afterStormVisualState"))
+    }
+
     func testAdaptiveStormAndGlassPrimitivesAreLayered() throws {
         let storm = try source("AfterStormApp/Design/AdaptiveStormBackground.swift")
         let glass = try source("AfterStormApp/Design/AdaptiveGlassSurface.swift")
