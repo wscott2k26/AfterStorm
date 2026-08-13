@@ -20,22 +20,22 @@ final class BuildCompatibilityTests: XCTestCase {
         )
     }
 
-    func testScrollableOnboardingScreensUseStickyBottomActions() throws {
+    func testScrollableOnboardingScreensUseStickyBottomGlassActions() throws {
         let lifeArea = try source("AfterStormApp/Onboarding/LifeAreaSelectionView.swift")
         let avatarStudio = try source("AfterStormApp/Onboarding/AvatarStudioView.swift")
 
         XCTAssertTrue(lifeArea.contains(".safeAreaInset(edge: .bottom)"))
-        XCTAssertTrue(lifeArea.contains("OnboardingActionDock"))
+        XCTAssertTrue(lifeArea.contains(".background(.ultraThinMaterial"))
         XCTAssertTrue(avatarStudio.contains(".safeAreaInset(edge: .bottom)"))
-        XCTAssertTrue(avatarStudio.contains("OnboardingActionDock"))
+        XCTAssertTrue(avatarStudio.contains(".background(.ultraThinMaterial"))
     }
 
-    func testStudioIntroUsesCloudFirstRetainedBoltSequence() throws {
+    func testStudioIntroUsesCloudFirstRetainedLightningSequence() throws {
         let intro = try source("AfterStormApp/Launch/StudioIntroView.swift")
 
         XCTAssertTrue(intro.contains("cloudVisible"))
-        XCTAssertTrue(intro.contains("strikeVisible"))
-        XCTAssertTrue(intro.contains("boltLocked"))
+        XCTAssertTrue(intro.contains("lightningVisible"))
+        XCTAssertTrue(intro.contains("lightningLocked"))
         XCTAssertTrue(intro.contains("wordmarkVisible"))
     }
 

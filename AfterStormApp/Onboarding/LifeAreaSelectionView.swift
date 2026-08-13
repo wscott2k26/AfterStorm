@@ -31,6 +31,20 @@ struct LifeAreaSelectionView: View {
                     Label("Honestly… everything", systemImage: selection.count == LifeArea.allCases.count ? "checkmark.circle.fill" : "tornado")
                 }
                 .buttonStyle(PremiumButtonStyle(prominent: false))
+                .padding(.bottom, 12)
+            }
+            .padding(22)
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 9) {
+                HStack(spacing: 7) {
+                    Image(systemName: selection.isEmpty ? "sparkles" : "checkmark.circle.fill")
+                        .foregroundStyle(selection.isEmpty ? .white.opacity(0.62) : AfterStormTheme.spark)
+                    Text(selection.isEmpty ? "Choose at least one area to continue" : "\(selection.count) selected")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.76))
+                    Spacer(minLength: 0)
+                }
 
                 Button("Continue") {
                     HapticsService.tap()
@@ -40,14 +54,24 @@ struct LifeAreaSelectionView: View {
                 .disabled(selection.isEmpty)
                 .opacity(selection.isEmpty ? 0.45 : 1)
             }
-            .padding(22)
+            .padding(14)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(AfterStormTheme.spark.opacity(0.26), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.28), radius: 22, y: 8)
+            .padding(.horizontal, 14)
+            .padding(.top, 8)
         }
     }
 
     private func areaButton(_ area: LifeArea) -> some View {
         Button {
             HapticsService.tap()
-            if selection.contains(area) { selection.remove(area) } else { selection.insert(area) }
+            withAnimation(AfterStormTheme.quickSpring) {
+                if selection.contains(area) { selection.remove(area) } else { selection.insert(area) }
+            }
         } label: {
             VStack(alignment: .leading, spacing: 10) {
                 Image(systemName: area.symbol)
@@ -65,6 +89,7 @@ struct LifeAreaSelectionView: View {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .stroke(selection.contains(area) ? AfterStormTheme.spark.opacity(0.72) : .white.opacity(0.10), lineWidth: 1)
             }
+            .scaleEffect(selection.contains(area) ? 1.015 : 1)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selection.contains(area) ? .isSelected : [])

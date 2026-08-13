@@ -55,14 +55,40 @@ struct AvatarStudioView: View {
                 picker("Outfit", options: availableOutfits, selection: $style.outfit) { $0.displayName }
                 picker("Accessory", options: availableAccessories, selection: $style.accessory) { $0.displayName }
 
+                Text("Your look can change later as you unlock more of The Block.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.bottom, 12)
+            }
+            .padding(22)
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 8) {
+                HStack(spacing: 7) {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(AfterStormTheme.spark)
+                    Text("Your first look is ready")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.76))
+                    Spacer(minLength: 0)
+                }
+
                 Button("That’s Me") {
                     HapticsService.unlock()
                     onContinue(style)
                 }
                 .buttonStyle(PremiumButtonStyle())
-                .padding(.top, 8)
+                .accessibilityHint("Save this look and continue to your first quest.")
             }
-            .padding(22)
+            .padding(14)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(AfterStormTheme.spark.opacity(0.26), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.28), radius: 22, y: 8)
+            .padding(.horizontal, 14)
+            .padding(.top, 8)
         }
     }
 
@@ -78,6 +104,8 @@ struct AvatarStudioView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(selection.wrappedValue == option ? AfterStormTheme.rainBlue : .gray.opacity(0.35))
+                        .scaleEffect(selection.wrappedValue == option ? 1.035 : 1)
+                        .animation(AfterStormTheme.quickSpring, value: selection.wrappedValue == option)
                         .accessibilityAddTraits(selection.wrappedValue == option ? .isSelected : [])
                     }
                 }

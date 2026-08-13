@@ -2,9 +2,13 @@ import SwiftUI
 
 struct StudioIntroView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var reveal = false
-    @State private var flash = false
+    @State private var cloudVisible = false
+    @State private var lightningVisible = false
+    @State private var lightningLocked = false
+    @State private var wordmarkVisible = false
+    @State private var studiosVisible = false
     @State private var drift = false
+    @State private var lightningOffset: CGFloat = -130
     let onFinished: () -> Void
 
     var body: some View {
@@ -23,49 +27,104 @@ struct StudioIntroView: View {
                 .blur(radius: 60)
                 .offset(x: drift ? -90 : 70, y: 70)
 
-            VStack(spacing: 12) {
+            VStack(spacing: 16) {
                 ZStack {
-                    Image(systemName: "cloud.fill")
-                        .font(.system(size: 88, weight: .black))
-                        .foregroundStyle(.white.opacity(0.92))
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 44, weight: .black))
-                        .foregroundStyle(AfterStormTheme.spark)
-                        .offset(y: 30)
-                }
-                .shadow(color: AfterStormTheme.spark.opacity(flash ? 0.9 : 0.16), radius: flash ? 34 : 8)
+                    Circle()
+                        .fill(AfterStormTheme.spark.opacity(lightningVisible ? 0.24 : (lightningLocked ? 0.08 : 0)))
+                        .frame(width: 180, height: 180)
+                        .blur(radius: lightningVisible ? 22 : 34)
 
-                Text("STORM AND ME")
-                    .font(.system(size: 29, weight: .black, design: .rounded))
-                    .tracking(2.4)
-                Text("STUDIOS")
-                    .font(.caption.weight(.bold))
-                    .tracking(7)
-                    .foregroundStyle(.white.opacity(0.62))
+                    Image(systemName: "cloud.fill")
+                        .font(.system(size: 92, weight: .black))
+                        .foregroundStyle(.white.opacity(0.94))
+                        .shadow(color: AfterStormTheme.rainBlue.opacity(0.36), radius: 24, y: 10)
+                        .opacity(cloudVisible ? 1 : 0)
+                        .scaleEffect(cloudVisible ? 1 : 0.76)
+                        .offset(y: reduceMotion ? 0 : (drift ? -2 : 2))
+
+                    if lightningVisible {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 68, weight: .black))
+                            .foregroundStyle(.white)
+                            .shadow(color: .white.opacity(0.92), radius: 16)
+                            .shadow(color: AfterStormTheme.spark.opacity(0.95), radius: 28)
+                            .offset(y: lightningOffset)
+                            .transition(.opacity)
+                    }
+
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 48, weight: .black))
+                        .foregroundStyle(AfterStormTheme.spark)
+                        .shadow(color: AfterStormTheme.spark.opacity(lightningLocked ? 0.72 : 0), radius: 18)
+                        .offset(y: 20)
+                        .opacity(lightningLocked ? 1 : 0)
+                        .scaleEffect(lightningLocked ? 1 : 0.58)
+                }
+                .frame(width: 190, height: 150)
+
+                VStack(spacing: 7) {
+                    Text("STORM AND ME")
+                        .font(.system(size: 29, weight: .black, design: .rounded))
+                        .tracking(2.4)
+                        .opacity(wordmarkVisible ? 1 : 0)
+                        .offset(y: wordmarkVisible ? 0 : 10)
+
+                    Text("STUDIOS")
+                        .font(.caption.weight(.bold))
+                        .tracking(7)
+                        .foregroundStyle(.white.opacity(0.62))
+                        .opacity(studiosVisible ? 1 : 0)
+                        .offset(y: studiosVisible ? 0 : 7)
+                }
+                .foregroundStyle(.white)
             }
-            .foregroundStyle(.white)
-            .opacity(reveal ? 1 : 0)
-            .scaleEffect(reveal ? 1 : 0.88)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Storm and Me Studios")
         .task {
-            AudioService.shared.playIntroThunder()
             if reduceMotion {
-                reveal = true
+                cloudVisible = true
+                lightningLocked = true
+                wordmarkVisible = true
+                studiosVisible = true
                 try? await Task.sleep(for: .milliseconds(900))
                 onFinished()
                 return
             }
 
-            withAnimation(.spring(response: 0.65, dampingFraction: 0.78)) { reveal = true }
-            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) { drift = true }
-            try? await Task.sleep(for: .milliseconds(520))
-            withAnimation(.easeOut(duration: 0.08)) { flash = true }
+            withAnimation(.spring(response: 0.62, dampingFraction: 0.82)) {
+                cloudVisible = true
+            }
+            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+                drift = true
+            }
+
+            try? await Task.sleep(for: .milliseconds(430))
+            AudioService.shared.playIntroThunder()
+            lightningOffset = -130
+            withAnimation(.easeOut(duration: 0.06)) {
+                lightningVisible = true
+            }
             HapticsService.restorationImpact()
-            try? await Task.sleep(for: .milliseconds(90))
-            withAnimation(.easeIn(duration: 0.22)) { flash = false }
-            try? await Task.sleep(for: .milliseconds(950))
+            withAnimation(.easeIn(duration: 0.12)) {
+                lightningOffset = -2
+            }
+
+            try? await Task.sleep(for: .milliseconds(120))
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+                lightningVisible = false
+                lightningLocked = true
+            }
+
+            try? await Task.sleep(for: .milliseconds(260))
+            withAnimation(.spring(response: 0.48, dampingFraction: 0.84)) {
+                wordmarkVisible = true
+            }
+            try? await Task.sleep(for: .milliseconds(150))
+            withAnimation(.easeOut(duration: 0.32)) {
+                studiosVisible = true
+            }
+            try? await Task.sleep(for: .milliseconds(850))
             onFinished()
         }
     }
