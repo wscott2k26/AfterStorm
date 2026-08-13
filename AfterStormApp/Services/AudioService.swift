@@ -12,19 +12,49 @@ final class AudioService {
     private var ambiencePlayers: [String: AVAudioPlayer] = [:]
     #endif
 
+    private let preferences = ExperiencePreferences.shared
+
     private init() {}
 
-    func playIntroThunder() { play(named: "storm-intro", extension: "wav", volume: 0.42) }
-    func playQuestComplete() { play(named: "quest-complete", extension: "wav", volume: 0.62) }
-    func playRestoration() { play(named: "restoration-impact", extension: "wav", volume: 0.68) }
-    func playUnlock() { play(named: "unlock", extension: "wav", volume: 0.54) }
+    func playIntroThunder() {
+        guard preferences.soundEffectsEnabled else { return }
+        play(named: "storm-intro", extension: "wav", volume: 0.42)
+    }
+
+    func playQuestComplete() {
+        guard preferences.soundEffectsEnabled else { return }
+        play(named: "quest-complete", extension: "wav", volume: 0.62)
+    }
+
+    func playRestoration() {
+        guard preferences.soundEffectsEnabled else { return }
+        play(named: "restoration-impact", extension: "wav", volume: 0.68)
+    }
+
+    func playUnlock() {
+        guard preferences.soundEffectsEnabled else { return }
+        play(named: "unlock", extension: "wav", volume: 0.54)
+    }
 
     func updateWorldAmbience(restorationFraction: Double) {
+        guard preferences.ambienceEnabled else {
+            stopWorldAmbience()
+            return
+        }
+
         #if canImport(AVFoundation)
         let fraction = max(0, min(1, restorationFraction))
         playLoop(named: "world-rain", volume: Float(0.12 - fraction * 0.07))
         playLoop(named: "world-afterglow", volume: Float(0.015 + fraction * 0.09))
         #endif
+    }
+
+    func refreshPreferences(restorationFraction: Double? = nil) {
+        if preferences.ambienceEnabled, let restorationFraction {
+            updateWorldAmbience(restorationFraction: restorationFraction)
+        } else if !preferences.ambienceEnabled {
+            stopWorldAmbience()
+        }
     }
 
     func stopWorldAmbience() {
