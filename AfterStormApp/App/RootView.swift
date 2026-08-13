@@ -19,6 +19,10 @@ struct RootView: View {
             AfterStormTheme.worldGradient.ignoresSafeArea()
             content.transition(.opacity.combined(with: .scale(scale: 0.985)))
         }
+        .environment(
+            \.afterStormVisualState,
+            RestorationVisualState(restorationFraction: model.restorationFraction)
+        )
         .animation(AfterStormTheme.premiumSpring, value: flow.phase)
         .task {
             guard !persistenceLoaded else { return }
