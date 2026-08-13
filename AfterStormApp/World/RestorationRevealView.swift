@@ -107,7 +107,7 @@ struct RestorationRevealView: View {
             }
 
             AudioService.shared.playRestoration()
-            HapticsService.restorationImpact()
+            HapticsService.majorRestoration()
 
             if reduceMotion {
                 revealed = true
