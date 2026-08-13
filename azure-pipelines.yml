@@ -1,13 +1,5 @@
-trigger:
-  branches:
-    include:
-      - main
-      - feature/*
-
-pr:
-  branches:
-    include:
-      - main
+trigger: none
+pr: none
 
 pool:
   vmImage: 'macOS-15'
@@ -78,8 +70,10 @@ steps:
       rm -f "$OUTPUT"
       /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$OUTPUT"
       test -s "$OUTPUT"
-      /usr/bin/unzip -l "$OUTPUT" | grep -q 'AfterStorm.app/Info.plist'
-      /usr/bin/unzip -l "$OUTPUT" | grep -q 'AfterStorm.app/PlugIns/AfterStormWidget.appex/Info.plist'
+      ZIP_CONTENTS="$(artifactDir)/zip-contents.txt"
+      /usr/bin/unzip -Z1 "$OUTPUT" > "$ZIP_CONTENTS"
+      grep -Fx 'AfterStorm.app/Info.plist' "$ZIP_CONTENTS"
+      grep -Fx 'AfterStorm.app/PlugIns/AfterStormWidget.appex/Info.plist' "$ZIP_CONTENTS"
       /usr/bin/shasum -a 256 "$OUTPUT" | tee "$(artifactDir)/AfterStorm-simulator.sha256"
     displayName: 'Package AfterStorm simulator app for browser testing'
 
