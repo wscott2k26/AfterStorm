@@ -1,7 +1,6 @@
 import Foundation
 import Observation
 
-@MainActor
 enum ExperienceIntensity: String, CaseIterable, Identifiable {
     case cinematic
     case balanced
