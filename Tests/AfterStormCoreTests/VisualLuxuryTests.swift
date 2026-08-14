@@ -4,7 +4,6 @@ import XCTest
 final class VisualLuxuryTests: XCTestCase {
     func testPremiumButtonUsesAdaptiveVisualStateAndGlassDepth() throws {
         let button = try source("AfterStormApp/Design/PremiumButtonStyle.swift")
-
         XCTAssertTrue(button.contains("afterStormVisualState"))
         XCTAssertTrue(button.contains("ultraThinMaterial"))
         XCTAssertTrue(button.contains("LinearGradient"))
@@ -18,7 +17,6 @@ final class VisualLuxuryTests: XCTestCase {
         let choice = try source("AfterStormApp/Onboarding/AvatarChoiceView.swift")
         let studio = try source("AfterStormApp/Onboarding/AvatarStudioView.swift")
         let preview = try source("AfterStormApp/Onboarding/AvatarPreviewView.swift")
-
         XCTAssertTrue(life.contains("AdaptiveStormBackground"))
         XCTAssertTrue(life.contains("adaptiveGlass"))
         XCTAssertTrue(choice.contains("adaptiveGlass"))
@@ -30,10 +28,9 @@ final class VisualLuxuryTests: XCTestCase {
     }
 
     func testQuestFlowUsesAdaptiveStormGlassAndRewardLighting() throws {
-        let first = try source("AfterStormApp/Quest/FirstQuestView.swift")
+        let first = try source("AfterStormApp/Onboarding/FirstQuestView.swift")
         let detail = try source("AfterStormApp/Quest/QuestDetailView.swift")
         let complete = try source("AfterStormApp/Quest/QuestCompleteView.swift")
-
         XCTAssertTrue(first.contains("AdaptiveStormBackground"))
         XCTAssertTrue(first.contains("adaptiveGlass"))
         XCTAssertTrue(detail.contains("AdaptiveStormBackground"))
@@ -45,16 +42,10 @@ final class VisualLuxuryTests: XCTestCase {
 
     private var repositoryRoot: URL {
         let testFile = URL(fileURLWithPath: #filePath)
-        return testFile
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
+        return testFile.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
     }
 
     private func source(_ relativePath: String) throws -> String {
-        try String(
-            contentsOf: repositoryRoot.appendingPathComponent(relativePath),
-            encoding: .utf8
-        )
+        try String(contentsOf: repositoryRoot.appendingPathComponent(relativePath), encoding: .utf8)
     }
 }
