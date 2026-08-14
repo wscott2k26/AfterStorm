@@ -3,8 +3,16 @@ import XCTest
 
 final class StormAtmosphereAssetTests: XCTestCase {
     func testLuxuryBackgroundUsesDeterministicStormTextureAsset() throws {
-        let script = try source("scripts/generate-assets.py")
+        let scriptURL = repositoryRoot.appendingPathComponent("scripts/generate-storm-atmosphere.py")
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: scriptURL.path),
+            "The dedicated deterministic storm generator must exist."
+        )
+        guard FileManager.default.fileExists(atPath: scriptURL.path) else { return }
+
+        let script = try String(contentsOf: scriptURL, encoding: .utf8)
         let background = try source("AfterStormApp/Design/AdaptiveStormBackground.swift")
+        let pipeline = try source("azure-pipelines.yml")
         let contentsURL = repositoryRoot
             .appendingPathComponent("AfterStormApp/Resources/Assets.xcassets/StormAtmosphere.imageset/Contents.json")
 
@@ -17,6 +25,7 @@ final class StormAtmosphereAssetTests: XCTestCase {
             XCTAssertTrue(script.contains(token), "Missing deterministic storm asset token: \(token)")
         }
         XCTAssertTrue(background.contains("Image(\"StormAtmosphere\")"))
+        XCTAssertTrue(pipeline.contains("python3 scripts/generate-storm-atmosphere.py"))
 
         guard FileManager.default.fileExists(atPath: contentsURL.path) else { return }
         let contents = try String(contentsOf: contentsURL, encoding: .utf8)
