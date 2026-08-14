@@ -29,6 +29,20 @@ final class VisualLuxuryTests: XCTestCase {
         XCTAssertTrue(preview.contains("RadialGradient"))
     }
 
+    func testQuestFlowUsesAdaptiveStormGlassAndRewardLighting() throws {
+        let first = try source("AfterStormApp/Quest/FirstQuestView.swift")
+        let detail = try source("AfterStormApp/Quest/QuestDetailView.swift")
+        let complete = try source("AfterStormApp/Quest/QuestCompleteView.swift")
+
+        XCTAssertTrue(first.contains("AdaptiveStormBackground"))
+        XCTAssertTrue(first.contains("adaptiveGlass"))
+        XCTAssertTrue(detail.contains("AdaptiveStormBackground"))
+        XCTAssertTrue(detail.contains("adaptiveGlass"))
+        XCTAssertTrue(complete.contains("afterStormVisualState"))
+        XCTAssertTrue(complete.contains("AdaptiveStormBackground"))
+        XCTAssertTrue(complete.contains("RadialGradient"))
+    }
+
     private var repositoryRoot: URL {
         let testFile = URL(fileURLWithPath: #filePath)
         return testFile
