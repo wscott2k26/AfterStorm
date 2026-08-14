@@ -22,11 +22,39 @@ struct AdaptiveStormBackground: View {
                     endPoint: .bottomTrailing
                 )
 
+                Image("StormAtmosphere")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .clipped()
+                    .saturation(0.82 + visualState.clearingWeight * 0.12 + visualState.afterglowWeight * 0.06)
+                    .contrast(1.08)
+                    .brightness(-0.08 * visualState.stormWeight + 0.035 * visualState.afterglowWeight)
+                    .opacity(reduceTransparency ? 0.82 : 0.92)
+                    .scaleEffect(motionAllowed ? (drift ? 1.045 : 1.025) : 1.025)
+                    .offset(
+                        x: motionAllowed ? (drift ? 5 : -4) : 0,
+                        y: motionAllowed ? (drift ? -3 : 2) : 0
+                    )
+
+                LinearGradient(
+                    colors: [
+                        AfterStormTheme.deepSky.opacity(0.18 + visualState.stormWeight * 0.18),
+                        visualState.accentSecondary.opacity(0.05 + visualState.clearingWeight * 0.13),
+                        AfterStormTheme.afterglowRose.opacity(visualState.afterglowWeight * 0.14),
+                        AfterStormTheme.afterglow.opacity(visualState.afterglowWeight * 0.16)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .blendMode(.softLight)
+
                 RadialGradient(
                     colors: [
                         visualState.accentPrimary.opacity(
                             visualState.glowIntensity * (breathe && motionAllowed ? 1.0 : 0.72)
                         ),
+                        visualState.accentSecondary.opacity(visualState.glowIntensity * 0.16),
                         .clear
                     ],
                     center: UnitPoint(x: 0.74, y: 0.20),
@@ -36,14 +64,14 @@ struct AdaptiveStormBackground: View {
                 .blendMode(.screen)
 
                 atmosphericCloudLayer(size: proxy.size)
-                    .opacity(reduceTransparency ? 0.72 : 1)
+                    .opacity(reduceTransparency ? 0.62 : 0.82)
 
                 mist
-                    .opacity(reduceTransparency ? 0.36 : 0.68)
+                    .opacity(reduceTransparency ? 0.32 : 0.58)
 
                 if preferences.weatherParticlesEnabled {
                     rainVeil
-                        .opacity(0.16 + visualState.stormWeight * 0.24)
+                        .opacity(0.13 + visualState.stormWeight * 0.24)
                 }
 
                 if preferences.lightningEffectsEnabled {
@@ -53,14 +81,14 @@ struct AdaptiveStormBackground: View {
                 LinearGradient(
                     colors: [
                         .clear,
-                        AfterStormTheme.deepSky.opacity(0.20 + visualState.stormWeight * 0.18)
+                        AfterStormTheme.deepSky.opacity(0.18 + visualState.stormWeight * 0.16)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
 
                 if reduceTransparency {
-                    Color.black.opacity(0.10 + visualState.stormWeight * 0.08)
+                    Color.black.opacity(0.08 + visualState.stormWeight * 0.07)
                 }
             }
             .clipped()
@@ -114,7 +142,7 @@ struct AdaptiveStormBackground: View {
                     height: canvasSize.height * mass.3
                 )
                 let cloudColor = AfterStormTheme.glassSilver.opacity(
-                    (0.05 + visualState.stormWeight * 0.12 + visualState.clearingWeight * 0.04) * mass.5
+                    (0.035 + visualState.stormWeight * 0.085 + visualState.clearingWeight * 0.03) * mass.5
                 )
                 layer.fill(Path(ellipseIn: rect), with: .color(cloudColor))
             }
@@ -125,13 +153,13 @@ struct AdaptiveStormBackground: View {
     private var mist: some View {
         ZStack {
             Capsule()
-                .fill(AfterStormTheme.rainBlue.opacity(0.13 + visualState.stormWeight * 0.12))
+                .fill(AfterStormTheme.rainBlue.opacity(0.10 + visualState.stormWeight * 0.10))
                 .frame(width: 460, height: 120)
                 .blur(radius: 58)
                 .offset(x: drift && motionAllowed ? 42 : -26, y: 82)
 
             Capsule()
-                .fill(visualState.accentSecondary.opacity(0.10 + visualState.clearingWeight * 0.10))
+                .fill(visualState.accentSecondary.opacity(0.08 + visualState.clearingWeight * 0.10))
                 .frame(width: 380, height: 90)
                 .blur(radius: 48)
                 .offset(x: drift && motionAllowed ? -70 : -30, y: -34)
@@ -156,7 +184,7 @@ struct AdaptiveStormBackground: View {
         RadialGradient(
             colors: [
                 Color.white.opacity(lightningGlow && motionAllowed ? 0.09 : 0.02),
-                AfterStormTheme.electricBlue.opacity(lightningGlow && motionAllowed ? 0.10 : 0.03),
+                AfterStormTheme.electricBlue.opacity(lightningGlow && motionAllowed ? 0.12 : 0.03),
                 .clear
             ],
             center: UnitPoint(x: 0.72, y: 0.10),
