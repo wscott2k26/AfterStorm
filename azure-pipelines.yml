@@ -15,6 +15,13 @@ steps:
 
   - bash: |
       set -euo pipefail
+      mkdir -p "$(artifactDir)"
+      : > xcodebuild.log
+      : > "$(artifactDir)/swift-test.log"
+    displayName: 'Prepare CI evidence paths'
+
+  - bash: |
+      set -euo pipefail
       XCODE_APP='/Applications/Xcode_26.3.app'
       if [ ! -d "$XCODE_APP" ]; then
         echo "Required Xcode not found: $XCODE_APP" >&2
@@ -27,14 +34,15 @@ steps:
     displayName: 'Select Xcode 26.3'
 
   - bash: |
-      set -euo pipefail
-      swift test
+      set -o pipefail
+      swift test 2>&1 | tee "$(artifactDir)/swift-test.log"
     displayName: 'Run AfterStormCore tests'
 
   - bash: |
       set -euo pipefail
       python3 scripts/generate-assets.py
       python3 scripts/generate-storm-atmosphere.py
+      test -s AfterStormApp/Resources/Assets.xcassets/StormAtmosphere.imageset/storm-atmosphere.png
     displayName: 'Generate deterministic app assets'
 
   - bash: |
@@ -43,12 +51,11 @@ steps:
         brew install xcodegen
       fi
       xcodegen generate
+      test -d AfterStorm.xcodeproj
     displayName: 'Generate Xcode project'
 
   - bash: |
       set -o pipefail
-      mkdir -p "$(artifactDir)"
-      : > xcodebuild.log
       xcodebuild \
         -project AfterStorm.xcodeproj \
         -scheme AfterStorm \
@@ -62,7 +69,6 @@ steps:
 
   - bash: |
       set -euo pipefail
-      mkdir -p "$(artifactDir)"
       APP_PATH="$(derivedDataPath)/Build/Products/Debug-iphonesimulator/AfterStorm.app"
       test -d "$APP_PATH"
       test -f "$APP_PATH/Info.plist"
