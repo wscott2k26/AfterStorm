@@ -155,6 +155,24 @@ final class BuildCompatibilityTests: XCTestCase {
         XCTAssertTrue(me.contains("adaptiveGlass"))
     }
 
+    func testQuestsScreenUsesHybridGlassSystem() throws {
+        let quests = try source("AfterStormApp/Main/QuestsView.swift")
+
+        XCTAssertTrue(quests.contains("AdaptiveStormBackground"))
+        XCTAssertTrue(quests.contains("adaptiveGlass"))
+        XCTAssertTrue(quests.contains("HybridGlassChipStyle"))
+        XCTAssertFalse(quests.contains(".buttonStyle(.bordered)"))
+    }
+
+    func testAdaptiveGlassExposesCrystalHighlightLayer() throws {
+        let glass = try source("AfterStormApp/Design/AdaptiveGlassSurface.swift")
+
+        XCTAssertTrue(glass.contains("crystalHighlight"))
+        XCTAssertTrue(glass.contains("HybridGlassChipStyle"))
+        XCTAssertTrue(glass.contains("accessibilityReduceTransparency"))
+        XCTAssertTrue(glass.contains("afterStormVisualState"))
+    }
+
     private var repositoryRoot: URL {
         let testFile = URL(fileURLWithPath: #filePath)
         return testFile
