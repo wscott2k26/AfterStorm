@@ -87,8 +87,8 @@ struct QuestCompleteView: View {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .adaptiveGlassSurface(cornerRadius: 18, prominence: .subtle)
                     }
+                    .adaptiveGlassSurface(cornerRadius: 18, prominence: .subtle)
                     .buttonStyle(.plain)
                     .accessibilityHint("The photo stays in this screen and is not saved by AfterStorm")
 
