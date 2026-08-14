@@ -7,6 +7,7 @@ struct AvatarPreviewView: View {
     var size: CGFloat = 150
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.afterStormVisualState) private var visualState
     @State private var preferences = ExperiencePreferences.shared
     @State private var floating = false
     @State private var blinking = false
@@ -35,10 +36,46 @@ struct AvatarPreviewView: View {
 
     var body: some View {
         ZStack {
+            RadialGradient(
+                colors: [
+                    visualState.accentPrimary.opacity(aura && animationEnabled ? 0.34 : 0.24),
+                    accent.opacity(0.18),
+                    visualState.accentSecondary.opacity(0.08),
+                    .clear
+                ],
+                center: UnitPoint(x: 0.48, y: 0.40),
+                startRadius: 4,
+                endRadius: size * 0.70
+            )
+            .scaleEffect(aura && animationEnabled ? 1.08 : 1)
+            .blur(radius: 3)
+
             Circle()
-                .fill(accent.opacity(aura && animationEnabled ? 0.21 : 0.15))
+                .fill(.ultraThinMaterial)
+                .opacity(0.44)
+                .padding(size * 0.045)
+
             Circle()
-                .stroke(accent.opacity(aura && animationEnabled ? 0.55 : 0.4), lineWidth: 1)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(0.54),
+                            visualState.accentPrimary.opacity(0.58),
+                            accent.opacity(0.32),
+                            .white.opacity(0.08)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1.2
+                )
+                .padding(size * 0.045)
+
+            Ellipse()
+                .fill(visualState.accentPrimary.opacity(aura && animationEnabled ? 0.18 : 0.10))
+                .frame(width: size * 0.58, height: size * 0.13)
+                .blur(radius: 12)
+                .offset(y: size * 0.32)
 
             Group {
                 if kind == .stormling {
@@ -51,7 +88,11 @@ struct AvatarPreviewView: View {
             .scaleEffect(animationEnabled ? (floating ? 1.012 : 0.996) : 1)
         }
         .frame(width: size, height: size)
-        .shadow(color: accent.opacity(aura && animationEnabled ? 0.36 : 0.25), radius: aura && animationEnabled ? 28 : 22, y: 8)
+        .shadow(
+            color: visualState.accentPrimary.opacity(aura && animationEnabled ? 0.34 : 0.20),
+            radius: aura && animationEnabled ? 30 : 22,
+            y: 8
+        )
         .animation(animationEnabled ? .easeInOut(duration: 1.9).repeatForever(autoreverses: true) : .default, value: floating)
         .animation(animationEnabled && preferences.intensity == .cinematic ? .easeInOut(duration: 2.4).repeatForever(autoreverses: true) : .default, value: aura)
         .task(id: animationTaskID) {
