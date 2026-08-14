@@ -42,8 +42,8 @@ steps:
       set -euo pipefail
       python3 scripts/generate-assets.py
       python3 scripts/generate-storm-atmosphere.py
-      test -s AfterStormApp/Resources/Assets.xcassets/StormAtmosphere.imageset/storm-atmosphere.png
-    displayName: 'Generate deterministic app assets'
+      test -s AfterStormApp/Resources/Assets.xcassets/StormAtmosphere.imageset/storm-atmosphere.jpg
+    displayName: 'Generate deterministic app assets and stage storm photograph'
 
   - bash: |
       set -euo pipefail
