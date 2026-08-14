@@ -31,45 +31,51 @@ struct QuestsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    header
-                    timeFilters
-                    areaFilters
+            ZStack {
+                AdaptiveStormBackground()
 
-                    if model.isLoadingQuests {
-                        ProgressView("Reading the weather…")
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 50)
-                    } else if filtered.isEmpty {
-                        ContentUnavailableView(
-                            "No quests in this pocket",
-                            systemImage: "cloud.sun",
-                            description: Text("Change a filter or ask AfterStorm for a fresh set.")
-                        )
-                    } else {
-                        if let continueQuest {
-                            questSection("Continue Something", quests: [continueQuest])
-                        }
-                        if !quickWins.isEmpty {
-                            questSection("Quick Wins", quests: quickWins)
-                        }
-                        if !suggested.isEmpty {
-                            questSection("Suggested for You", quests: suggested)
-                        }
-                    }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        header
+                        timeFilters
+                        areaFilters
 
-                    Button {
-                        HapticsService.tap()
-                        onGiveQuest()
-                    } label: {
-                        Label("Give Me a Quest", systemImage: "bolt.fill")
+                        if model.isLoadingQuests {
+                            ProgressView("Reading the weather…")
+                                .tint(.white)
+                                .foregroundStyle(.white.opacity(0.86))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 50)
+                        } else if filtered.isEmpty {
+                            ContentUnavailableView(
+                                "No quests in this pocket",
+                                systemImage: "cloud.sun",
+                                description: Text("Change a filter or ask AfterStorm for a fresh set.")
+                            )
+                        } else {
+                            if let continueQuest {
+                                questSection("Continue Something", quests: [continueQuest])
+                            }
+                            if !quickWins.isEmpty {
+                                questSection("Quick Wins", quests: quickWins)
+                            }
+                            if !suggested.isEmpty {
+                                questSection("Suggested for You", quests: suggested)
+                            }
+                        }
+
+                        Button {
+                            HapticsService.tap()
+                            onGiveQuest()
+                        } label: {
+                            Label("Give Me a Quest", systemImage: "bolt.fill")
+                        }
+                        .buttonStyle(PremiumButtonStyle(prominent: true))
+                        .padding(.top, 2)
                     }
-                    .buttonStyle(PremiumButtonStyle())
+                    .padding(20)
                 }
-                .padding(20)
             }
-            .background(AfterStormTheme.worldGradient.ignoresSafeArea())
             .navigationTitle("Quests")
             .task {
                 if model.suggestions.isEmpty { await model.refreshSuggestions() }
@@ -81,9 +87,11 @@ struct QuestsView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Small enough to start.")
                 .font(.title2.bold())
+                .foregroundStyle(.white)
             Text("Pick a useful win, not an impossible day.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.white.opacity(0.68))
         }
+        .shadow(color: .black.opacity(0.24), radius: 8, y: 3)
     }
 
     private var timeFilters: some View {
@@ -95,14 +103,14 @@ struct QuestsView: View {
                 filterButton("10 min", value: .upTo10)
                 filterButton("20+ min", value: .twentyPlus)
             }
+            .padding(.vertical, 3)
         }
         .accessibilityLabel("Quest duration filters")
     }
 
     private func filterButton(_ title: String, value: QuestTimeFilter) -> some View {
         Button(title) { withAnimation(AfterStormTheme.quickSpring) { timeFilter = value } }
-            .buttonStyle(.bordered)
-            .tint(timeFilter == value ? AfterStormTheme.spark : .secondary)
+            .buttonStyle(HybridGlassChipStyle(selected: timeFilter == value))
             .accessibilityAddTraits(timeFilter == value ? .isSelected : [])
     }
 
@@ -110,16 +118,17 @@ struct QuestsView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 Button("All") { selectedArea = nil }
-                    .buttonStyle(.bordered)
-                    .tint(selectedArea == nil ? AfterStormTheme.rainBlue : .secondary)
+                    .buttonStyle(HybridGlassChipStyle(selected: selectedArea == nil))
                     .accessibilityAddTraits(selectedArea == nil ? .isSelected : [])
                 ForEach(model.selectedAreas.sorted(by: { $0.rawValue < $1.rawValue }), id: \.self) { area in
-                    Button { selectedArea = area } label: { Label(area.displayName, systemImage: area.symbolName) }
-                        .buttonStyle(.bordered)
-                        .tint(selectedArea == area ? AfterStormTheme.rainBlue : .secondary)
-                        .accessibilityAddTraits(selectedArea == area ? .isSelected : [])
+                    Button { selectedArea = area } label: {
+                        Label(area.displayName, systemImage: area.symbolName)
+                    }
+                    .buttonStyle(HybridGlassChipStyle(selected: selectedArea == area))
+                    .accessibilityAddTraits(selectedArea == area ? .isSelected : [])
                 }
             }
+            .padding(.vertical, 3)
         }
         .accessibilityLabel("Life area filters")
     }
@@ -129,7 +138,8 @@ struct QuestsView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.headline)
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(.white.opacity(0.90))
+                .shadow(color: .black.opacity(0.22), radius: 6, y: 2)
             ForEach(quests) { quest in
                 Button { HapticsService.tap(); onSelect(quest) } label: {
                     QuestDiscoveryCard(quest: quest)
@@ -141,28 +151,69 @@ struct QuestsView: View {
 }
 
 private struct QuestDiscoveryCard: View {
+    @Environment(\.afterStormVisualState) private var visualState
+
     let quest: Quest
+
     var body: some View {
         HStack(spacing: 14) {
             Image(systemName: quest.lifeArea.symbolName)
                 .font(.title3.bold())
+                .foregroundStyle(.white.opacity(0.94))
                 .frame(width: 48, height: 48)
-                .background(AfterStormTheme.rainBlue.opacity(0.18), in: RoundedRectangle(cornerRadius: 15))
+                .background {
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                .fill(visualState.accentPrimary.opacity(0.16))
+                        }
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [
+                                            .white.opacity(0.46),
+                                            visualState.accentPrimary.opacity(0.36),
+                                            visualState.accentSecondary.opacity(0.10),
+                                            .white.opacity(0.05)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 0.8
+                                )
+                        }
+                        .shadow(color: visualState.accentPrimary.opacity(0.16), radius: 8, y: 3)
+                }
+
             VStack(alignment: .leading, spacing: 5) {
-                Text(quest.title).font(.headline)
-                Text(quest.instruction).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
-                HStack {
+                Text(quest.title)
+                    .font(.headline)
+                    .foregroundStyle(.white.opacity(0.97))
+
+                Text(quest.instruction)
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.72))
+                    .lineLimit(2)
+
+                HStack(spacing: 12) {
                     Label("\(quest.estimatedMinutes) min", systemImage: "clock")
                     Label("\(quest.sparkReward)", systemImage: "sparkles")
                 }
-                .font(.caption.bold()).foregroundStyle(AfterStormTheme.spark)
+                .font(.caption.bold())
+                .foregroundStyle(AfterStormTheme.spark)
             }
+
             Spacer()
-            Image(systemName: "chevron.right").foregroundStyle(.secondary)
+
+            Image(systemName: "chevron.right")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.48))
         }
         .padding(16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 22).stroke(.white.opacity(0.10)) }
+        .adaptiveGlass(cornerRadius: 22, prominence: .standard)
+        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens quest details")
     }
