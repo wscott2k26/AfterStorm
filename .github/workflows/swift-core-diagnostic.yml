@@ -1,0 +1,48 @@
+name: AfterStorm Swift Core Diagnostic
+
+on:
+  push:
+    branches:
+      - feature/afterstorm-core-slice
+  workflow_dispatch:
+
+concurrency:
+  group: afterstorm-swift-core-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  swift-core:
+    name: Xcode 26.3 Swift core tests
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE_APP='/Applications/Xcode_26.3.app'
+          if [ ! -d "$XCODE_APP" ]; then
+            echo "Required Xcode not found: $XCODE_APP" >&2
+            ls -1 /Applications/Xcode*.app || true
+            exit 1
+          fi
+          sudo xcode-select -s "$XCODE_APP/Contents/Developer"
+          xcodebuild -version
+          swift --version
+
+      - name: Run AfterStormCore tests
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p diagnostic-artifacts
+          swift test 2>&1 | tee diagnostic-artifacts/swift-test.log
+
+      - name: Upload Swift test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: afterstorm-swift-core-${{ github.run_id }}
+          if-no-files-found: warn
+          path: diagnostic-artifacts/swift-test.log
