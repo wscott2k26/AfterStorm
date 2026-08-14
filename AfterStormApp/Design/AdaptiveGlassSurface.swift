@@ -3,6 +3,7 @@ import SwiftUI
 enum AdaptiveGlassProminence {
     case subtle
     case standard
+    case tile
     case hero
     case control
 
@@ -10,8 +11,9 @@ enum AdaptiveGlassProminence {
         switch self {
         case .subtle: 0.11
         case .standard: 0.18
+        case .tile: 0.24
         case .hero: 0.26
-        case .control: 0.21
+        case .control: 0.23
         }
     }
 
@@ -19,8 +21,9 @@ enum AdaptiveGlassProminence {
         switch self {
         case .subtle: 0.05
         case .standard: 0.11
+        case .tile: 0.14
         case .hero: 0.20
-        case .control: 0.15
+        case .control: 0.16
         }
     }
 
@@ -28,8 +31,9 @@ enum AdaptiveGlassProminence {
         switch self {
         case .subtle: 0.82
         case .standard: 0.78
+        case .tile: 0.56
         case .hero: 0.72
-        case .control: 0.76
+        case .control: 0.62
         }
     }
 }
@@ -43,6 +47,9 @@ private struct AdaptiveGlassSurfaceModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        let isHero = prominence == .hero
+        let isTile = prominence == .tile
+        let isControl = prominence == .control
 
         return content
             .background {
@@ -62,9 +69,9 @@ private struct AdaptiveGlassSurfaceModifier: ViewModifier {
                             LinearGradient(
                                 colors: [
                                     .white.opacity(prominence.highlightOpacity),
-                                    visualState.accentPrimary.opacity(prominence == .control ? 0.18 : 0.10),
+                                    visualState.accentPrimary.opacity(isControl ? 0.20 : (isTile ? 0.14 : 0.10)),
                                     .clear,
-                                    visualState.accentSecondary.opacity(0.06)
+                                    visualState.accentSecondary.opacity(isTile ? 0.08 : 0.06)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -76,10 +83,10 @@ private struct AdaptiveGlassSurfaceModifier: ViewModifier {
                         .fill(
                             LinearGradient(
                                 stops: [
-                                    .init(color: .white.opacity(prominence == .hero ? 0.23 : 0.15), location: 0.0),
-                                    .init(color: visualState.accentPrimary.opacity(prominence == .hero ? 0.12 : 0.07), location: 0.20),
+                                    .init(color: .white.opacity(isHero ? 0.23 : (isTile ? 0.20 : 0.15)), location: 0.0),
+                                    .init(color: visualState.accentPrimary.opacity(isHero ? 0.12 : (isTile ? 0.10 : 0.07)), location: 0.20),
                                     .init(color: .clear, location: 0.48),
-                                    .init(color: visualState.accentSecondary.opacity(0.035), location: 1.0)
+                                    .init(color: visualState.accentSecondary.opacity(isTile ? 0.055 : 0.035), location: 1.0)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -92,14 +99,14 @@ private struct AdaptiveGlassSurfaceModifier: ViewModifier {
                         .stroke(
                             LinearGradient(
                                 colors: [
-                                    .white.opacity(prominence == .hero ? 0.36 : 0.28),
+                                    .white.opacity(isHero ? 0.36 : (isTile ? 0.34 : 0.28)),
                                     .white.opacity(0.05),
-                                    visualState.accentPrimary.opacity(0.15)
+                                    visualState.accentPrimary.opacity(isTile ? 0.19 : 0.15)
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
                             ),
-                            lineWidth: 0.7
+                            lineWidth: isTile ? 0.85 : 0.7
                         )
                 }
             }
@@ -112,15 +119,15 @@ private struct AdaptiveGlassSurfaceModifier: ViewModifier {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    .white.opacity(prominence == .hero ? 0.42 : 0.28),
-                                    visualState.accentSecondary.opacity(0.12),
+                                    .white.opacity(isHero ? 0.42 : (isTile ? 0.38 : 0.28)),
+                                    visualState.accentSecondary.opacity(isTile ? 0.17 : 0.12),
                                     .clear
                                 ],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: prominence == .hero ? 116 : 86, height: 1.4)
+                        .frame(width: isHero ? 116 : (isTile ? 102 : 86), height: isTile ? 1.7 : 1.4)
                         .padding(.top, 2.6)
                         .padding(.leading, cornerRadius * 0.72)
                         .blur(radius: 0.35)
@@ -129,34 +136,136 @@ private struct AdaptiveGlassSurfaceModifier: ViewModifier {
             }
             .shadow(
                 color: visualState.accentPrimary.opacity(prominence.glowOpacity),
-                radius: prominence == .hero ? 25 : 17,
-                y: prominence == .hero ? 9 : 7
+                radius: isHero ? 25 : (isTile ? 21 : 17),
+                y: isHero ? 9 : (isTile ? 8 : 7)
             )
             .shadow(
-                color: .black.opacity(prominence == .hero ? 0.35 : 0.31),
-                radius: prominence == .hero ? 30 : 24,
-                y: prominence == .hero ? 16 : 12
+                color: .black.opacity(isHero ? 0.35 : (isTile ? 0.34 : 0.31)),
+                radius: isHero ? 30 : (isTile ? 27 : 24),
+                y: isHero ? 16 : (isTile ? 14 : 12)
             )
     }
 
     @ViewBuilder
     private func crystalHighlight(_ shape: RoundedRectangle) -> some View {
+        let isHero = prominence == .hero
+        let isTile = prominence == .tile
+
         shape
             .stroke(
                 LinearGradient(
                     colors: [
-                        .white.opacity(prominence == .hero ? 0.72 : 0.56),
-                        visualState.accentPrimary.opacity(prominence == .hero ? 0.36 : 0.28),
+                        .white.opacity(isHero ? 0.72 : (isTile ? 0.64 : 0.56)),
+                        visualState.accentPrimary.opacity(isHero ? 0.36 : (isTile ? 0.34 : 0.28)),
                         .white.opacity(0.05),
-                        visualState.accentSecondary.opacity(prominence == .hero ? 0.24 : 0.18)
+                        visualState.accentSecondary.opacity(isHero ? 0.24 : (isTile ? 0.22 : 0.18))
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ),
-                lineWidth: prominence == .hero ? 1.35 : 1.0
+                lineWidth: isHero ? 1.35 : (isTile ? 1.15 : 1.0)
             )
             .blendMode(.screen)
             .allowsHitTesting(false)
+    }
+}
+
+private struct HybridGlassTileModifier: ViewModifier {
+    @Environment(\.afterStormVisualState) private var visualState
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    let cornerRadius: CGFloat
+    let selected: Bool
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
+        return content
+            .adaptiveGlass(
+                cornerRadius: cornerRadius,
+                prominence: selected ? .hero : .tile
+            )
+            .overlay {
+                if !reduceTransparency {
+                    ZStack {
+                        shape
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        .white.opacity(selected ? 0.32 : 0.24),
+                                        visualState.accentPrimary.opacity(selected ? 0.18 : 0.12),
+                                        visualState.accentSecondary.opacity(selected ? 0.08 : 0.05),
+                                        .clear
+                                    ],
+                                    center: UnitPoint(x: 0.08, y: 0.03),
+                                    startRadius: 0,
+                                    endRadius: 145
+                                )
+                            )
+
+                        shape
+                            .fill(
+                                LinearGradient(
+                                    stops: [
+                                        .init(color: .white.opacity(selected ? 0.16 : 0.11), location: 0.00),
+                                        .init(color: .clear, location: 0.31),
+                                        .init(color: visualState.accentSecondary.opacity(selected ? 0.11 : 0.075), location: 0.67),
+                                        .init(color: .clear, location: 1.00)
+                                    ],
+                                    startPoint: UnitPoint(x: -0.15, y: 0.03),
+                                    endPoint: UnitPoint(x: 1.12, y: 1.0)
+                                )
+                            )
+                    }
+                    .blendMode(.screen)
+                    .allowsHitTesting(false)
+                }
+            }
+            .overlay {
+                crystalRim(shape)
+            }
+            .shadow(
+                color: visualState.accentSecondary.opacity(selected ? 0.16 : 0.08),
+                radius: selected ? 18 : 12,
+                y: selected ? 8 : 6
+            )
+    }
+
+    @ViewBuilder
+    private func crystalRim(_ shape: RoundedRectangle) -> some View {
+        ZStack {
+            shape
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(selected ? 0.86 : 0.74),
+                            visualState.accentPrimary.opacity(selected ? 0.54 : 0.42),
+                            .white.opacity(0.08),
+                            visualState.accentSecondary.opacity(selected ? 0.34 : 0.26)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: selected ? 1.75 : 1.30
+                )
+
+            shape
+                .inset(by: 2.4)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(selected ? 0.34 : 0.25),
+                            .clear,
+                            visualState.accentSecondary.opacity(selected ? 0.16 : 0.11)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.65
+                )
+        }
+        .blendMode(.screen)
+        .allowsHitTesting(false)
     }
 }
 
@@ -255,5 +364,17 @@ extension View {
         prominence: AdaptiveGlassProminence = .standard
     ) -> some View {
         adaptiveGlass(cornerRadius: cornerRadius, prominence: prominence)
+    }
+
+    func hybridGlassTile(
+        cornerRadius: CGFloat = 22,
+        selected: Bool = false
+    ) -> some View {
+        modifier(
+            HybridGlassTileModifier(
+                cornerRadius: cornerRadius,
+                selected: selected
+            )
+        )
     }
 }
