@@ -15,8 +15,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 STORM_BG_DIR = ROOT / "AfterStormApp/Resources/Assets.xcassets/StormAtmosphere.imageset"
 OUTPUT_NAME = "storm-atmosphere.png"
-WIDTH = 640
-HEIGHT = 1386
+WIDTH = 540
+HEIGHT = 1170
 
 
 def clamp(value: float, lo: float = 0.0, hi: float = 255.0) -> int:
@@ -65,7 +65,7 @@ def fbm(x: float, y: float, seed: int = 57) -> float:
     total = 0.0
     amplitude = 0.54
     norm = 0.0
-    for octave, frequency in enumerate((1.7, 3.4, 6.8, 13.6, 27.2)):
+    for octave, frequency in enumerate((1.7, 3.4, 6.8, 13.6)):
         total += value_noise(x, y, frequency, seed + octave * 19) * amplitude
         norm += amplitude
         amplitude *= 0.52
