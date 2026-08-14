@@ -34,6 +34,7 @@ steps:
   - bash: |
       set -euo pipefail
       python3 scripts/generate-assets.py
+      python3 scripts/generate-storm-atmosphere.py
     displayName: 'Generate deterministic app assets'
 
   - bash: |
