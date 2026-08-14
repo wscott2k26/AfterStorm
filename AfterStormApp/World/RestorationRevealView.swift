@@ -7,6 +7,7 @@ struct RestorationRevealView: View {
     let onContinue: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.afterStormVisualState) private var visualState
     @State private var revealed = false
     @State private var pulse = false
 
@@ -30,7 +31,10 @@ struct RestorationRevealView: View {
                 )
 
             Circle()
-                .stroke(AfterStormTheme.spark.opacity(pulse ? 0 : 0.68), lineWidth: pulse ? 2 : 14)
+                .stroke(
+                    visualState.accentPrimary.opacity(pulse ? 0 : 0.72),
+                    lineWidth: pulse ? 2 : 14
+                )
                 .frame(width: pulse ? 520 : 90, height: pulse ? 520 : 90)
                 .scaleEffect(pulse ? 1 : 0.35)
                 .blur(radius: pulse ? 3 : 0)
@@ -39,30 +43,57 @@ struct RestorationRevealView: View {
                 .accessibilityHidden(true)
 
             Circle()
-                .fill(AfterStormTheme.afterglow.opacity(pulse ? 0.02 : 0.28))
+                .fill(visualState.accentSecondary.opacity(pulse ? 0.02 : 0.30))
                 .frame(width: pulse ? 390 : 120, height: pulse ? 390 : 120)
                 .blur(radius: 34)
                 .opacity(reduceMotion ? 0.12 : 1)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
 
+            RadialGradient(
+                colors: [
+                    visualState.accentPrimary.opacity(revealed ? 0.12 : 0),
+                    visualState.accentSecondary.opacity(revealed ? 0.05 : 0),
+                    .clear
+                ],
+                center: UnitPoint(x: 0.5, y: 0.68),
+                startRadius: 8,
+                endRadius: 330
+            )
+            .blendMode(.screen)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+
             VStack {
                 Spacer()
                 VStack(spacing: 10) {
                     ZStack {
+                        RadialGradient(
+                            colors: [
+                                visualState.accentPrimary.opacity(0.32),
+                                visualState.accentSecondary.opacity(0.10),
+                                .clear
+                            ],
+                            center: .center,
+                            startRadius: 4,
+                            endRadius: 48
+                        )
+                        .frame(width: 92, height: 92)
+
                         Circle()
-                            .fill(AfterStormTheme.spark.opacity(0.13))
+                            .stroke(.white.opacity(0.22), lineWidth: 1)
                             .frame(width: 70, height: 70)
+
                         Image(systemName: "bolt.fill")
                             .font(.system(size: 38, weight: .black))
-                            .foregroundStyle(AfterStormTheme.spark)
-                            .shadow(color: AfterStormTheme.spark.opacity(0.45), radius: 10)
+                            .foregroundStyle(visualState.accentPrimary)
+                            .shadow(color: visualState.accentPrimary.opacity(0.54), radius: 12)
                     }
 
                     Text("YOU RESTORED")
                         .font(.caption.bold())
                         .tracking(3)
-                        .foregroundStyle(.white.opacity(0.66))
+                        .foregroundStyle(.white.opacity(0.68))
 
                     Text(nodeTitle)
                         .font(.system(size: 32, weight: .black, design: .rounded))
@@ -70,11 +101,11 @@ struct RestorationRevealView: View {
 
                     Label("+\(quest.sparkReward) Sparks", systemImage: "sparkles")
                         .font(.headline)
-                        .foregroundStyle(AfterStormTheme.spark)
+                        .foregroundStyle(visualState.accentPrimary)
 
                     Text("\(reaction.speaker): “\(reaction.message)”")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.80))
+                        .foregroundStyle(.white.opacity(0.82))
                         .multilineTextAlignment(.center)
                         .padding(.top, 2)
 
@@ -86,12 +117,7 @@ struct RestorationRevealView: View {
                     .padding(.top, 8)
                 }
                 .padding(20)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 28)
-                        .stroke(AfterStormTheme.spark.opacity(0.16), lineWidth: 1)
-                }
-                .shadow(color: .black.opacity(0.30), radius: 22, y: 10)
+                .adaptiveGlassSurface(cornerRadius: 28, prominence: .hero)
                 .padding(16)
             }
             .opacity(revealed ? 1 : 0)
