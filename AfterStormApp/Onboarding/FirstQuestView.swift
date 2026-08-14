@@ -6,64 +6,107 @@ struct FirstQuestView: View {
     let onSelect: (Quest) -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                Text("Let’s restore something.")
-                    .font(.system(size: 34, weight: .black, design: .rounded))
-                Text("Three small wins. Pick the one that feels easiest to start.")
-                    .foregroundStyle(.secondary)
+        ZStack {
+            AdaptiveStormBackground()
 
-                if model.isLoadingQuests {
-                    ProgressView("Reading the weather…")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 60)
-                } else {
-                    ForEach(model.suggestions) { quest in
-                        Button { HapticsService.tap(); onSelect(quest) } label: {
-                            QuestCard(quest: quest)
-                        }
-                        .buttonStyle(.plain)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Let’s restore something.")
+                            .font(.system(size: 34, weight: .black, design: .rounded))
+                        Text("Three small wins. Pick the one that feels easiest to start.")
+                            .foregroundStyle(.white.opacity(0.72))
                     }
-                }
+                    .shadow(color: .black.opacity(0.34), radius: 9, y: 3)
 
-                if let message = model.errorMessage {
-                    Text(message).font(.footnote).foregroundStyle(.orange)
-                }
+                    if model.isLoadingQuests {
+                        ProgressView("Reading the weather…")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 60)
+                            .adaptiveGlassSurface(cornerRadius: 24, prominence: .standard)
+                    } else {
+                        ForEach(model.suggestions) { quest in
+                            Button {
+                                HapticsService.tap()
+                                onSelect(quest)
+                            } label: {
+                                QuestCard(quest: quest)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
 
-                Button {
-                    HapticsService.tap()
-                    Task { await model.refreshSuggestions() }
-                } label: {
-                    Label("Give Me a Quest", systemImage: "bolt.circle.fill")
+                    if let message = model.errorMessage {
+                        Text(message)
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
+                            .padding(12)
+                            .adaptiveGlassSurface(cornerRadius: 16, prominence: .subtle)
+                    }
+
+                    Button {
+                        HapticsService.tap()
+                        Task { await model.refreshSuggestions() }
+                    } label: {
+                        Label("Give Me a Quest", systemImage: "bolt.circle.fill")
+                    }
+                    .buttonStyle(PremiumButtonStyle(prominent: false))
                 }
-                .buttonStyle(PremiumButtonStyle(prominent: false))
+                .padding(22)
             }
-            .padding(22)
         }
     }
 }
 
 private struct QuestCard: View {
+    @Environment(\.afterStormVisualState) private var visualState
     let quest: Quest
+
     var body: some View {
         HStack(spacing: 16) {
             ZStack {
-                RoundedRectangle(cornerRadius: 18).fill(AfterStormTheme.spark.opacity(0.16)).frame(width: 58, height: 58)
-                Image(systemName: "bolt.fill").foregroundStyle(AfterStormTheme.spark)
+                RadialGradient(
+                    colors: [
+                        visualState.accentPrimary.opacity(0.34),
+                        visualState.accentSecondary.opacity(0.10),
+                        .clear
+                    ],
+                    center: .center,
+                    startRadius: 4,
+                    endRadius: 34
+                )
+                .frame(width: 66, height: 66)
+
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(.white.opacity(0.22), lineWidth: 1)
+                    .frame(width: 58, height: 58)
+                Image(systemName: "bolt.fill")
+                    .foregroundStyle(visualState.accentPrimary)
+                    .shadow(color: visualState.accentPrimary.opacity(0.40), radius: 8)
             }
+
             VStack(alignment: .leading, spacing: 7) {
                 Text(quest.title).font(.headline)
                 HStack(spacing: 10) {
                     Label("\(quest.estimatedMinutes) min", systemImage: "clock")
                     Label("\(quest.sparkReward)", systemImage: "sparkles")
-                }.font(.caption).foregroundStyle(.secondary)
-                Text(quest.instruction).font(.subheadline).foregroundStyle(.white.opacity(0.72)).lineLimit(2)
+                }
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.68))
+                Text(quest.instruction)
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.76))
+                    .lineLimit(2)
             }
             Spacer()
-            Image(systemName: "chevron.right").foregroundStyle(.secondary)
+            Image(systemName: "chevron.right")
+                .foregroundStyle(visualState.accentSecondary.opacity(0.82))
         }
         .padding(17)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 24).stroke(.white.opacity(0.10), lineWidth: 1) }
+        .adaptiveGlassSurface(cornerRadius: 24, prominence: .standard)
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(visualState.accentPrimary.opacity(0.16), lineWidth: 0.8)
+        }
     }
 }
