@@ -1,0 +1,105 @@
+name: AfterStorm App Store Release Readiness
+
+on:
+  push:
+    branches:
+      - release/afterstorm-1.0-prep
+  workflow_dispatch:
+
+concurrency:
+  group: afterstorm-app-store-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-readiness:
+    name: Xcode 26.3 Release device build and store checks
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE_APP='/Applications/Xcode_26.3.app'
+          test -d "$XCODE_APP"
+          sudo xcode-select -s "$XCODE_APP/Contents/Developer"
+          xcodebuild -version
+          swift --version
+
+      - name: Run Swift tests
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p release-artifacts
+          swift test 2>&1 | tee release-artifacts/swift-test.log
+
+      - name: Validate App Store metadata and privacy declarations
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/check-app-store-release.py | tee release-artifacts/app-store-readiness.log
+
+      - name: Generate deterministic assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/generate-assets.py
+          python3 scripts/generate-storm-atmosphere.py
+          test -s AfterStormApp/Resources/Assets.xcassets/StormAtmosphere.imageset/storm-atmosphere.jpg
+
+      - name: Install XcodeGen
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: Generate Xcode project
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodegen generate
+          test -d AfterStorm.xcodeproj
+
+      - name: Build unsigned Release for physical iOS target
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project AfterStorm.xcodeproj \
+            -scheme AfterStorm \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath ReleaseDerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build | tee release-artifacts/xcodebuild-release.log
+
+      - name: Verify release bundle structure and privacy manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP='ReleaseDerivedData/Build/Products/Release-iphoneos/AfterStorm.app'
+          WIDGET="$APP/PlugIns/AfterStormWidget.appex"
+          test -f "$APP/Info.plist"
+          test -f "$WIDGET/Info.plist"
+          test -f "$APP/PrivacyInfo.xcprivacy"
+          test -f "$WIDGET/PrivacyInfo.xcprivacy"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist" | grep -Fx 'com.stormandme.afterstorm'
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist" | grep -Fx '1.0'
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Info.plist" | grep -Fx '1'
+          /usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$APP/Info.plist" | grep -Fx 'false'
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$WIDGET/Info.plist" | grep -Fx 'com.stormandme.afterstorm.widget'
+          printf 'Release bundle verification passed\n' | tee release-artifacts/bundle-verification.log
+
+      - name: Upload release-readiness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: afterstorm-app-store-readiness-${{ github.run_id }}
+          if-no-files-found: warn
+          path: release-artifacts/
