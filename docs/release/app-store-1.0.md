@@ -57,9 +57,11 @@ Suggested review flow:
 Camera, microphone, speech recognition, and photo-library features are optional and are only requested after the reviewer chooses the related feature. Core quest and progression functionality remains usable without granting those optional permissions.
 
 ## Privacy questionnaire working answer
-Current architecture is device-first. Quest progress and preferences are stored through SwiftData and may sync through the user's iCloud/CloudKit account when available. Apple Intelligence quest generation uses Apple's system Foundation Models on supported devices. AfterStorm version 1.0 does not include an AfterStorm-operated analytics, advertising, or user-profile backend.
+Current architecture is device-first. Quest progress, selected Life Areas, avatar choices, restoration progress, and quest completion history are stored through SwiftData on the device and may sync through the user's private iCloud/CloudKit storage when available. Because that synced progress is transmitted off-device and retained for cross-device app functionality, answer **Yes** to data collection and disclose **Product Interaction** for **App Functionality**. Declare this Product Interaction as **linked to the user** and **not used for tracking**.
 
-Before publishing the privacy answers in App Store Connect, confirm the generated Xcode privacy report and the final binary contain no newly added third-party SDKs or remote data flows.
+AfterStorm 1.0 does not include an AfterStorm-operated analytics, advertising, data-broker, or user-profile backend. Optional camera/photos are not saved into the progress database. Optional speech input is not retained as audio by AfterStorm. Apple Intelligence quest generation uses Apple's system Foundation Models on supported devices.
+
+Before publishing the privacy answers in App Store Connect, confirm the generated Xcode privacy report and the final signed binary contain no newly added third-party SDKs or remote data flows.
 
 ## Export compliance working answer
 The current source does not implement custom cryptography. Standard Apple platform security, iCloud, and system networking may use encryption. The project declares that it does not use non-exempt encryption. Reconfirm this answer if custom cryptography or a non-Apple networking/security SDK is added before submission.
@@ -93,7 +95,7 @@ Do not submit until all are true:
 - A valid Distribution signing identity/team can archive the app and widget.
 - Privacy and Support URLs return HTTP 200 publicly.
 - Final 6.9-inch screenshots are uploaded.
-- App Privacy questionnaire is published.
+- App Privacy questionnaire is published with Product Interaction / App Functionality / linked to user / not used for tracking.
 - Age Rating questionnaire is complete.
 - Release build passes Xcode 26.x device archive validation.
 - The uploaded build finishes App Store Connect processing without blocking warnings/errors.
