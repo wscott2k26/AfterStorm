@@ -21,7 +21,7 @@ struct LifeAreaSelectionView: View {
                         Text("What needs restoring?")
                             .font(.system(size: 34, weight: .black, design: .rounded))
                         Text("Pick as many as you need. AfterStorm will keep the quests small.")
-                            .foregroundStyle(.white.opacity(0.76))
+                            .foregroundStyle(.white.opacity(0.78))
                     }
                     .textShadowForStorm()
 
@@ -50,10 +50,10 @@ struct LifeAreaSelectionView: View {
             VStack(spacing: 9) {
                 HStack(spacing: 7) {
                     Image(systemName: selection.isEmpty ? "sparkles" : "checkmark.circle.fill")
-                        .foregroundStyle(selection.isEmpty ? .white.opacity(0.66) : visualState.accentPrimary)
+                        .foregroundStyle(selection.isEmpty ? .white.opacity(0.70) : visualState.accentPrimary)
                     Text(selection.isEmpty ? "Choose at least one area to continue" : "\(selection.count) selected")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.86))
+                        .foregroundStyle(.white.opacity(0.90))
                     Spacer(minLength: 0)
                 }
 
@@ -63,11 +63,11 @@ struct LifeAreaSelectionView: View {
                 }
                 .buttonStyle(PremiumButtonStyle())
                 .disabled(selection.isEmpty)
-                .opacity(selection.isEmpty ? 0.62 : 1)
+                .opacity(selection.isEmpty ? 0.76 : 1)
             }
             .padding(14)
             .adaptiveGlassSurface(cornerRadius: 26, prominence: .control)
-            .shadow(color: visualState.accentSecondary.opacity(0.10), radius: 18, y: 8)
+            .shadow(color: visualState.accentSecondary.opacity(0.12), radius: 19, y: 8)
             .padding(.horizontal, 14)
             .padding(.top, 8)
         }
@@ -91,7 +91,7 @@ struct LifeAreaSelectionView: View {
 
                 Text(area.displayName)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.96))
+                    .foregroundStyle(.white.opacity(0.97))
                     .multilineTextAlignment(.leading)
 
                 Spacer(minLength: 0)
@@ -118,49 +118,11 @@ struct LifeAreaSelectionView: View {
     }
 
     private func areaIcon(_ area: LifeArea, selected: Bool) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
-
-        return Image(systemName: area.symbol)
+        Image(systemName: area.symbol)
             .font(.title3.weight(.semibold))
-            .foregroundStyle(selected ? .white : .white.opacity(0.92))
+            .foregroundStyle(selected ? .white : .white.opacity(0.94))
             .frame(width: 43, height: 43)
-            .background {
-                ZStack {
-                    shape.fill(.ultraThinMaterial)
-                    shape.fill(
-                        LinearGradient(
-                            colors: [
-                                .white.opacity(selected ? 0.14 : 0.09),
-                                visualState.accentPrimary.opacity(selected ? 0.30 : 0.17),
-                                visualState.accentSecondary.opacity(selected ? 0.14 : 0.07),
-                                .clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .blendMode(.screen)
-
-                    shape.stroke(
-                        LinearGradient(
-                            colors: [
-                                .white.opacity(selected ? 0.76 : 0.52),
-                                visualState.accentPrimary.opacity(selected ? 0.48 : 0.30),
-                                .white.opacity(0.06),
-                                visualState.accentSecondary.opacity(selected ? 0.28 : 0.16)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: selected ? 1.15 : 0.9
-                    )
-                }
-            }
-            .shadow(
-                color: visualState.accentPrimary.opacity(selected ? 0.28 : 0.13),
-                radius: selected ? 11 : 7,
-                y: 4
-            )
+            .hybridGlassIconWell(cornerRadius: 14, selected: selected)
     }
 }
 
