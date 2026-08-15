@@ -32,6 +32,19 @@ final class QuestInteractionPolishTests: XCTestCase {
         }
     }
 
+    func testLifeAreaSelectionKeepsGlassAndAddsTactilePressFeedback() throws {
+        let life = try source("AfterStormApp/Onboarding/LifeAreaSelectionView.swift")
+
+        for token in [
+            ".buttonStyle(PremiumPressButtonStyle(pressedScale: 0.975, pressedBrightness: -0.014))",
+            ".transition(.scale.combined(with: .opacity))",
+            ".disabled(selection.isEmpty)",
+            ".hybridGlassTile(cornerRadius: 22, selected: selected)"
+        ] {
+            XCTAssertTrue(life.contains(token), "Missing Life Area interaction token: \(token)")
+        }
+    }
+
     private var repositoryRoot: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
