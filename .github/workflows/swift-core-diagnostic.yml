@@ -45,7 +45,7 @@ jobs:
           set -euo pipefail
           python3 scripts/generate-assets.py
           python3 scripts/generate-storm-atmosphere.py
-          test -s AfterStormApp/Resources/Assets.xcassets/StormAtmosphere.imageset/storm-atmosphere.png
+          test -s AfterStormApp/Resources/Assets.xcassets/StormAtmosphere.imageset/storm-atmosphere.jpg
 
       - name: Install XcodeGen
         shell: bash
