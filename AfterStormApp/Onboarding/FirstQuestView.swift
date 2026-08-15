@@ -15,7 +15,7 @@ struct FirstQuestView: View {
                         Text("Let’s restore something.")
                             .font(.system(size: 34, weight: .black, design: .rounded))
                         Text("Three small wins. Pick the one that feels easiest to start.")
-                            .foregroundStyle(.white.opacity(0.72))
+                            .foregroundStyle(.white.opacity(0.76))
                     }
                     .shadow(color: .black.opacity(0.34), radius: 9, y: 3)
 
@@ -50,7 +50,7 @@ struct FirstQuestView: View {
                     } label: {
                         Label("Give Me a Quest", systemImage: "bolt.circle.fill")
                     }
-                    .buttonStyle(PremiumButtonStyle(prominent: false))
+                    .buttonStyle(PremiumButtonStyle(prominent: true))
                 }
                 .padding(22)
             }
@@ -64,49 +64,37 @@ private struct QuestCard: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            ZStack {
-                RadialGradient(
-                    colors: [
-                        visualState.accentPrimary.opacity(0.34),
-                        visualState.accentSecondary.opacity(0.10),
-                        .clear
-                    ],
-                    center: .center,
-                    startRadius: 4,
-                    endRadius: 34
-                )
-                .frame(width: 66, height: 66)
-
-                RoundedRectangle(cornerRadius: 18)
-                    .stroke(.white.opacity(0.22), lineWidth: 1)
-                    .frame(width: 58, height: 58)
-                Image(systemName: "bolt.fill")
-                    .foregroundStyle(visualState.accentPrimary)
-                    .shadow(color: visualState.accentPrimary.opacity(0.40), radius: 8)
-            }
+            Image(systemName: "bolt.fill")
+                .font(.title3.bold())
+                .foregroundStyle(visualState.accentPrimary)
+                .shadow(color: visualState.accentPrimary.opacity(0.42), radius: 8)
+                .frame(width: 58, height: 58)
+                .hybridGlassIconWell(cornerRadius: 18)
 
             VStack(alignment: .leading, spacing: 7) {
-                Text(quest.title).font(.headline)
+                Text(quest.title)
+                    .font(.headline)
+                    .foregroundStyle(.white.opacity(0.98))
                 HStack(spacing: 10) {
                     Label("\(quest.estimatedMinutes) min", systemImage: "clock")
                     Label("\(quest.sparkReward)", systemImage: "sparkles")
                 }
                 .font(.caption)
-                .foregroundStyle(.white.opacity(0.68))
+                .foregroundStyle(.white.opacity(0.74))
                 Text(quest.instruction)
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.76))
+                    .foregroundStyle(.white.opacity(0.80))
                     .lineLimit(2)
             }
             Spacer()
             Image(systemName: "chevron.right")
-                .foregroundStyle(visualState.accentSecondary.opacity(0.82))
+                .foregroundStyle(visualState.accentSecondary.opacity(0.88))
         }
         .padding(17)
         .adaptiveGlassSurface(cornerRadius: 24, prominence: .standard)
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(visualState.accentPrimary.opacity(0.16), lineWidth: 0.8)
+                .stroke(visualState.accentPrimary.opacity(0.18), lineWidth: 0.8)
         }
     }
 }
