@@ -17,6 +17,21 @@ final class QuestInteractionPolishTests: XCTestCase {
         }
     }
 
+    func testQuestsDiscoveryUsesConsistentTactileFeedback() throws {
+        let quests = try source("AfterStormApp/Main/QuestsView.swift")
+
+        for token in [
+            "@Environment(\\.accessibilityReduceMotion) private var reduceMotion",
+            ".buttonStyle(PremiumPressButtonStyle())",
+            "HapticsService.tap(); withAnimation(AfterStormTheme.quickSpring) { timeFilter = value }",
+            "HapticsService.tap(); withAnimation(AfterStormTheme.quickSpring) { selectedArea = nil }",
+            "HapticsService.tap(); withAnimation(AfterStormTheme.quickSpring) { selectedArea = area }",
+            ".animation(reduceMotion ? nil : AfterStormTheme.quickSpring, value: model.isLoadingQuests)"
+        ] {
+            XCTAssertTrue(quests.contains(token), "Missing Quests interaction token: \(token)")
+        }
+    }
+
     private var repositoryRoot: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
