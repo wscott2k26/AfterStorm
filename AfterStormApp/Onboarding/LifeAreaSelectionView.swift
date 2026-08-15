@@ -113,7 +113,7 @@ struct LifeAreaSelectionView: View {
             .scaleEffect(selected ? 1.018 : 1)
             .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PremiumPressButtonStyle(pressedScale: 0.975, pressedBrightness: -0.014))
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
