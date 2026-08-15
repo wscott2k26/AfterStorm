@@ -13,6 +13,7 @@ final class StormAtmosphereAssetTests: XCTestCase {
         let script = try String(contentsOf: scriptURL, encoding: .utf8)
         let background = try source("AfterStormApp/Design/AdaptiveStormBackground.swift")
         let pipeline = try source("azure-pipelines.yml")
+        let mirrorWorkflow = try source(".github/workflows/swift-core-diagnostic.yml")
         let attribution = try source("docs/quality/third-party-asset-attributions.md")
         let contentsURL = repositoryRoot
             .appendingPathComponent("AfterStormApp/Resources/Assets.xcassets/StormAtmosphere.imageset/Contents.json")
@@ -32,6 +33,16 @@ final class StormAtmosphereAssetTests: XCTestCase {
 
         XCTAssertTrue(background.contains("Image(\"StormAtmosphere\")"))
         XCTAssertTrue(pipeline.contains("python3 scripts/generate-storm-atmosphere.py"))
+        XCTAssertTrue(pipeline.contains("storm-atmosphere.jpg"))
+        XCTAssertTrue(mirrorWorkflow.contains("python3 scripts/generate-storm-atmosphere.py"))
+        XCTAssertTrue(
+            mirrorWorkflow.contains("storm-atmosphere.jpg"),
+            "The Xcode 26 mirror must verify the same JPEG staged by the generator and Azure pipeline."
+        )
+        XCTAssertFalse(
+            mirrorWorkflow.contains("storm-atmosphere.png"),
+            "The Xcode 26 mirror must not require the retired deterministic PNG asset."
+        )
         XCTAssertTrue(attribution.contains("Tom Van Dyck"))
         XCTAssertTrue(attribution.contains("Pexels"))
         XCTAssertTrue(attribution.contains("15532423"))
