@@ -3,6 +3,7 @@ name: AfterStorm Xcode 26 Mirror Check
 on:
   push:
     branches:
+      - main
       - feature/afterstorm-core-slice
       - feature/afterstorm-quests-interaction-polish
       - release/afterstorm-1.0-prep
