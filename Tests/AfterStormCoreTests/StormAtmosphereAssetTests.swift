@@ -25,7 +25,6 @@ final class StormAtmosphereAssetTests: XCTestCase {
         for token in [
             "PEXELS_SOURCE_URL",
             "Tom Van Dyck",
-            "urlretrieve",
             "storm-atmosphere.jpg"
         ] {
             XCTAssertTrue(script.contains(token), "Missing licensed real-storm asset token: \(token)")
@@ -40,6 +39,28 @@ final class StormAtmosphereAssetTests: XCTestCase {
         guard FileManager.default.fileExists(atPath: contentsURL.path) else { return }
         let contents = try String(contentsOf: contentsURL, encoding: .utf8)
         XCTAssertTrue(contents.contains("storm-atmosphere.jpg"))
+    }
+
+    func testPexelsDownloaderUsesBrowserCompatibleRequestHeaders() throws {
+        let script = try source("scripts/generate-storm-atmosphere.py")
+
+        for token in [
+            "Request(",
+            "urlopen(",
+            "User-Agent",
+            "Referer",
+            "https://www.pexels.com/"
+        ] {
+            XCTAssertTrue(
+                script.contains(token),
+                "Storm photo download must use browser-compatible request metadata: missing \(token)"
+            )
+        }
+
+        XCTAssertFalse(
+            script.contains("urlretrieve("),
+            "Bare urlretrieve requests are rejected by Pexels with HTTP 403 on hosted CI runners."
+        )
     }
 
     private var repositoryRoot: URL {
