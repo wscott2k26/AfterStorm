@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/afterstorm-core-slice
+      - feature/afterstorm-quests-interaction-polish
   workflow_dispatch:
 
 concurrency:
