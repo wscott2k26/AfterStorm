@@ -89,7 +89,7 @@ struct QuestsView: View {
                 .font(.title2.bold())
                 .foregroundStyle(.white)
             Text("Pick a useful win, not an impossible day.")
-                .foregroundStyle(.white.opacity(0.68))
+                .foregroundStyle(.white.opacity(0.72))
         }
         .shadow(color: .black.opacity(0.24), radius: 8, y: 3)
     }
@@ -138,7 +138,7 @@ struct QuestsView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.headline)
-                .foregroundStyle(.white.opacity(0.90))
+                .foregroundStyle(.white.opacity(0.93))
                 .shadow(color: .black.opacity(0.22), radius: 6, y: 2)
             ForEach(quests) { quest in
                 Button { HapticsService.tap(); onSelect(quest) } label: {
@@ -151,50 +151,24 @@ struct QuestsView: View {
 }
 
 private struct QuestDiscoveryCard: View {
-    @Environment(\.afterStormVisualState) private var visualState
-
     let quest: Quest
 
     var body: some View {
         HStack(spacing: 14) {
             Image(systemName: quest.lifeArea.symbolName)
                 .font(.title3.bold())
-                .foregroundStyle(.white.opacity(0.94))
+                .foregroundStyle(.white.opacity(0.96))
                 .frame(width: 48, height: 48)
-                .background {
-                    RoundedRectangle(cornerRadius: 15, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                                .fill(visualState.accentPrimary.opacity(0.16))
-                        }
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                                .stroke(
-                                    LinearGradient(
-                                        colors: [
-                                            .white.opacity(0.46),
-                                            visualState.accentPrimary.opacity(0.36),
-                                            visualState.accentSecondary.opacity(0.10),
-                                            .white.opacity(0.05)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 0.8
-                                )
-                        }
-                        .shadow(color: visualState.accentPrimary.opacity(0.16), radius: 8, y: 3)
-                }
+                .hybridGlassIconWell(cornerRadius: 15)
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(quest.title)
                     .font(.headline)
-                    .foregroundStyle(.white.opacity(0.97))
+                    .foregroundStyle(.white.opacity(0.98))
 
                 Text(quest.instruction)
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(.white.opacity(0.78))
                     .lineLimit(2)
 
                 HStack(spacing: 12) {
@@ -209,7 +183,7 @@ private struct QuestDiscoveryCard: View {
 
             Image(systemName: "chevron.right")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.48))
+                .foregroundStyle(.white.opacity(0.55))
         }
         .padding(16)
         .adaptiveGlass(cornerRadius: 22, prominence: .standard)
