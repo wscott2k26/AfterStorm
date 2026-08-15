@@ -68,7 +68,7 @@ struct QuestModeView: View {
                     HapticsService.tap()
                     isPaused.toggle()
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(HybridGlassChipStyle(selected: isPaused))
                 .disabled(remainingSeconds == 0)
             }
 
@@ -99,6 +99,11 @@ struct QuestModeView: View {
         .onChange(of: quest.estimatedMinutes) { _, newValue in
             remainingSeconds = max(1, newValue) * 60
             isPaused = false
+        }
+        .onChange(of: remainingSeconds) { oldValue, newValue in
+            if oldValue > 0 && newValue == 0 {
+                HapticsService.timerFinished()
+            }
         }
         .task(id: timerTaskID) {
             guard !isPaused else { return }
