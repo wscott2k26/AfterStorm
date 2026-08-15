@@ -3,6 +3,8 @@ name: AfterStorm App Store Release Readiness
 on:
   push:
     branches:
+      - main
+      - feature/afterstorm-core-slice
       - release/afterstorm-1.0-prep
   workflow_dispatch:
 
