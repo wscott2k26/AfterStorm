@@ -45,6 +45,32 @@ final class QuestInteractionPolishTests: XCTestCase {
         }
     }
 
+    func testQuestModeAndCompletionUsePremiumStateFeedback() throws {
+        let mode = try source("AfterStormApp/Quest/QuestModeView.swift")
+        let complete = try source("AfterStormApp/Quest/QuestCompleteView.swift")
+        let haptics = try source("AfterStormApp/Services/HapticsService.swift")
+
+        for token in [
+            "static func timerFinished()",
+            "guard ExperiencePreferences.shared.hapticsEnabled else { return }"
+        ] {
+            XCTAssertTrue(haptics.contains(token), "Missing timer haptic token: \(token)")
+        }
+
+        for token in [
+            ".buttonStyle(HybridGlassChipStyle(selected: isPaused))",
+            ".onChange(of: remainingSeconds)",
+            "HapticsService.timerFinished()"
+        ] {
+            XCTAssertTrue(mode.contains(token), "Missing Quest Mode interaction token: \(token)")
+        }
+
+        XCTAssertTrue(
+            complete.contains(".buttonStyle(PremiumPressButtonStyle(pressedScale: 0.985, pressedBrightness: -0.012))")
+        )
+        XCTAssertTrue(complete.contains("guard !reduceMotion else { return }"))
+    }
+
     private var repositoryRoot: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
