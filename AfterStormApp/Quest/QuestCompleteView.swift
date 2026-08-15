@@ -89,7 +89,7 @@ struct QuestCompleteView: View {
                         .padding(.vertical, 12)
                     }
                     .adaptiveGlassSurface(cornerRadius: 18, prominence: .subtle)
-                    .buttonStyle(.plain)
+                    .buttonStyle(PremiumPressButtonStyle(pressedScale: 0.985, pressedBrightness: -0.012))
                     .accessibilityHint("The photo stays in this screen and is not saved by AfterStorm")
 
                     Button("I DID IT  ⚡") {
