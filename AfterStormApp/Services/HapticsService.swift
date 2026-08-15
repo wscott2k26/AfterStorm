@@ -33,6 +33,13 @@ enum HapticsService {
         #endif
     }
 
+    static func timerFinished() {
+        guard ExperiencePreferences.shared.hapticsEnabled else { return }
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred(intensity: 0.58)
+        #endif
+    }
+
     static func restorationImpact() {
         guard ExperiencePreferences.shared.hapticsEnabled else { return }
         #if canImport(UIKit)
