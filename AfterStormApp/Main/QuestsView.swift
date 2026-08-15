@@ -1,0 +1,213 @@
+import AfterStormCore
+import SwiftUI
+
+struct QuestsView: View {
+    @Bindable var model: AppSessionModel
+    let onSelect: (Quest) -> Void
+    let onGiveQuest: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var selectedArea: LifeArea?
+    @State private var timeFilter: QuestTimeFilter = .any
+
+    private var filtered: [Quest] {
+        model.suggestions.filter { quest in
+            let matchesArea = selectedArea.map { quest.lifeArea == $0 } ?? true
+            return matchesArea && timeFilter.matches(minutes: quest.estimatedMinutes)
+        }
+    }
+
+    private var continueQuest: Quest? {
+        guard let recentArea = model.completionHistory.last?.lifeArea else { return nil }
+        return filtered.first(where: { $0.lifeArea == recentArea })
+    }
+
+    private var remainingQuests: [Quest] {
+        guard let continueQuest else { return filtered }
+        return filtered.filter { $0.id != continueQuest.id }
+    }
+
+    private var quickWins: [Quest] { remainingQuests.filter { $0.estimatedMinutes <= 5 } }
+    private var suggested: [Quest] { remainingQuests.filter { $0.estimatedMinutes > 5 } }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AdaptiveStormBackground()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        header
+                        timeFilters
+                        areaFilters
+
+                        if model.isLoadingQuests {
+                            ProgressView("Reading the weather…")
+                                .tint(.white)
+                                .foregroundStyle(.white.opacity(0.86))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 50)
+                                .transition(
+                                    reduceMotion
+                                        ? .opacity
+                                        : .opacity.combined(with: .scale(scale: 0.985))
+                                )
+                        } else if filtered.isEmpty {
+                            ContentUnavailableView(
+                                "No quests in this pocket",
+                                systemImage: "cloud.sun",
+                                description: Text("Change a filter or ask AfterStorm for a fresh set.")
+                            )
+                            .transition(
+                                reduceMotion
+                                    ? .opacity
+                                    : .opacity.combined(with: .scale(scale: 0.992))
+                            )
+                        } else {
+                            Group {
+                                if let continueQuest {
+                                    questSection("Continue Something", quests: [continueQuest])
+                                }
+                                if !quickWins.isEmpty {
+                                    questSection("Quick Wins", quests: quickWins)
+                                }
+                                if !suggested.isEmpty {
+                                    questSection("Suggested for You", quests: suggested)
+                                }
+                            }
+                            .transition(
+                                reduceMotion
+                                    ? .opacity
+                                    : .opacity.combined(with: .scale(scale: 0.992))
+                            )
+                        }
+
+                        Button {
+                            HapticsService.tap()
+                            onGiveQuest()
+                        } label: {
+                            Label("Give Me a Quest", systemImage: "bolt.fill")
+                        }
+                        .buttonStyle(PremiumButtonStyle(prominent: true))
+                        .padding(.top, 2)
+                    }
+                    .padding(20)
+                    .animation(reduceMotion ? nil : AfterStormTheme.quickSpring, value: model.isLoadingQuests)
+                }
+            }
+            .navigationTitle("Quests")
+            .task {
+                if model.suggestions.isEmpty { await model.refreshSuggestions() }
+            }
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Small enough to start.")
+                .font(.title2.bold())
+                .foregroundStyle(.white)
+            Text("Pick a useful win, not an impossible day.")
+                .foregroundStyle(.white.opacity(0.72))
+        }
+        .shadow(color: .black.opacity(0.24), radius: 8, y: 3)
+    }
+
+    private var timeFilters: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                filterButton("Any", value: .any)
+                filterButton("2 min", value: .upTo2)
+                filterButton("5 min", value: .upTo5)
+                filterButton("10 min", value: .upTo10)
+                filterButton("20+ min", value: .twentyPlus)
+            }
+            .padding(.vertical, 3)
+        }
+        .accessibilityLabel("Quest duration filters")
+    }
+
+    private func filterButton(_ title: String, value: QuestTimeFilter) -> some View {
+        Button(title) { HapticsService.tap(); withAnimation(AfterStormTheme.quickSpring) { timeFilter = value } }
+            .buttonStyle(HybridGlassChipStyle(selected: timeFilter == value))
+            .accessibilityAddTraits(timeFilter == value ? .isSelected : [])
+    }
+
+    private var areaFilters: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                Button("All") { HapticsService.tap(); withAnimation(AfterStormTheme.quickSpring) { selectedArea = nil } }
+                    .buttonStyle(HybridGlassChipStyle(selected: selectedArea == nil))
+                    .accessibilityAddTraits(selectedArea == nil ? .isSelected : [])
+                ForEach(model.selectedAreas.sorted(by: { $0.rawValue < $1.rawValue }), id: \.self) { area in
+                    Button { HapticsService.tap(); withAnimation(AfterStormTheme.quickSpring) { selectedArea = area } } label: {
+                        Label(area.displayName, systemImage: area.symbolName)
+                    }
+                    .buttonStyle(HybridGlassChipStyle(selected: selectedArea == area))
+                    .accessibilityAddTraits(selectedArea == area ? .isSelected : [])
+                }
+            }
+            .padding(.vertical, 3)
+        }
+        .accessibilityLabel("Life area filters")
+    }
+
+    @ViewBuilder
+    private func questSection(_ title: String, quests: [Quest]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.white.opacity(0.93))
+                .shadow(color: .black.opacity(0.22), radius: 6, y: 2)
+            ForEach(quests) { quest in
+                Button { HapticsService.tap(); onSelect(quest) } label: {
+                    QuestDiscoveryCard(quest: quest)
+                }
+                .buttonStyle(PremiumPressButtonStyle())
+            }
+        }
+    }
+}
+
+private struct QuestDiscoveryCard: View {
+    let quest: Quest
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: quest.lifeArea.symbolName)
+                .font(.title3.bold())
+                .foregroundStyle(.white.opacity(0.96))
+                .frame(width: 48, height: 48)
+                .hybridGlassIconWell(cornerRadius: 15)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(quest.title)
+                    .font(.headline)
+                    .foregroundStyle(.white.opacity(0.98))
+
+                Text(quest.instruction)
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.78))
+                    .lineLimit(2)
+
+                HStack(spacing: 12) {
+                    Label("\(quest.estimatedMinutes) min", systemImage: "clock")
+                    Label("\(quest.sparkReward)", systemImage: "sparkles")
+                }
+                .font(.caption.bold())
+                .foregroundStyle(AfterStormTheme.spark)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.55))
+        }
+        .padding(16)
+        .adaptiveGlass(cornerRadius: 22, prominence: .standard)
+        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Opens quest details")
+    }
+}

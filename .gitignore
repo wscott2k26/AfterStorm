@@ -1,0 +1,9 @@
+.worktrees/
+.build/
+AfterStorm.xcodeproj/
+DerivedData/
+.DS_Store
+
+# Recreated by scripts/generate-assets.py
+AfterStormApp/Resources/Assets.xcassets/AppIcon.appiconset/*.png
+AfterStormApp/Resources/Audio/*.wav

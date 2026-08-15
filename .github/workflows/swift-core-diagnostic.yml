@@ -1,0 +1,106 @@
+name: AfterStorm Xcode 26 Mirror Check
+
+on:
+  push:
+    branches:
+      - main
+      - feature/afterstorm-core-slice
+      - feature/afterstorm-quests-interaction-polish
+      - release/afterstorm-1.0-prep
+  workflow_dispatch:
+
+concurrency:
+  group: afterstorm-xcode26-mirror-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  xcode26-mirror:
+    name: Xcode 26.3 tests, build, and Appetize package
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE_APP='/Applications/Xcode_26.3.app'
+          if [ ! -d "$XCODE_APP" ]; then
+            echo "Required Xcode not found: $XCODE_APP" >&2
+            ls -1 /Applications/Xcode*.app || true
+            exit 1
+          fi
+          sudo xcode-select -s "$XCODE_APP/Contents/Developer"
+          xcodebuild -version
+          swift --version
+
+      - name: Run AfterStormCore tests
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p diagnostic-artifacts
+          swift test 2>&1 | tee diagnostic-artifacts/swift-test.log
+
+      - name: Generate deterministic app assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/generate-assets.py
+          python3 scripts/generate-storm-atmosphere.py
+          test -s AfterStormApp/Resources/Assets.xcassets/StormAtmosphere.imageset/storm-atmosphere.jpg
+
+      - name: Install XcodeGen
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: Generate Xcode project
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodegen generate
+          test -d AfterStorm.xcodeproj
+
+      - name: Build AfterStorm and widget for iOS Simulator
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project AfterStorm.xcodeproj \
+            -scheme AfterStorm \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build | tee diagnostic-artifacts/xcodebuild.log
+
+      - name: Package and verify Appetize simulator ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH='DerivedData/Build/Products/Debug-iphonesimulator/AfterStorm.app'
+          OUTPUT='diagnostic-artifacts/AfterStorm-simulator.app.zip'
+          test -d "$APP_PATH"
+          test -f "$APP_PATH/Info.plist"
+          test -f "$APP_PATH/PlugIns/AfterStormWidget.appex/Info.plist"
+          rm -f "$OUTPUT"
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$OUTPUT"
+          test -s "$OUTPUT"
+          /usr/bin/unzip -Z1 "$OUTPUT" > diagnostic-artifacts/zip-contents.txt
+          grep -Fx 'AfterStorm.app/Info.plist' diagnostic-artifacts/zip-contents.txt
+          grep -Fx 'AfterStorm.app/PlugIns/AfterStormWidget.appex/Info.plist' diagnostic-artifacts/zip-contents.txt
+          /usr/bin/shasum -a 256 "$OUTPUT" | tee diagnostic-artifacts/AfterStorm-simulator.sha256
+
+      - name: Upload mirror-check evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: afterstorm-xcode26-mirror-${{ github.run_id }}
+          if-no-files-found: warn
+          path: diagnostic-artifacts/

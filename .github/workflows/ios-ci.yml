@@ -1,0 +1,111 @@
+name: AfterStorm Xcode 27 Release Check
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: afterstorm-xcode27-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-check:
+    name: Xcode 27 build, simulator smoke, and acceptance screens
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift core tests
+        run: swift test
+
+      - name: Generate deterministic app assets
+        run: python3 scripts/generate-assets.py
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Verify WidgetKit metadata
+        run: |
+          set -euo pipefail
+          test "$(plutil -extract NSExtension.NSExtensionPointIdentifier raw AfterStormWidget/Info.plist)" = "com.apple.widgetkit-extension"
+
+      - name: Build AfterStorm and widget
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project AfterStorm.xcodeproj \
+            -scheme AfterStorm \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS='DEBUG AFTERSTORM_MULTIMODAL' \
+            build | tee xcodebuild.log
+
+      - name: Require warning-clean Xcode build
+        run: |
+          set -euo pipefail
+          if grep -n 'warning:' xcodebuild.log; then
+            echo 'Xcode build emitted warnings.' >&2
+            exit 1
+          fi
+          echo 'Xcode build is warning-clean.'
+
+      - name: Boot simulator, install, launch, and capture screens
+        shell: bash
+        timeout-minutes: 10
+        run: |
+          set -euxo pipefail
+          UDID="$(python3 - <<'PY'
+          import json, subprocess
+          data = json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','-j']))
+          candidates=[]
+          for runtime, devices in data.get('devices',{}).items():
+              if 'iOS' not in runtime:
+                  continue
+              for device in devices:
+                  if device.get('isAvailable') and device.get('name','').startswith('iPhone'):
+                      candidates.append((runtime,device['name'],device['udid']))
+          candidates.sort(reverse=True)
+          print(candidates[0][2] if candidates else '')
+          PY
+          )"
+          test -n "$UDID"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+
+          APP_PATH='DerivedData/Build/Products/Debug-iphonesimulator/AfterStorm.app'
+          test -d "$APP_PATH"
+          test -f "$APP_PATH/PlugIns/AfterStormWidget.appex/Info.plist"
+          xcrun simctl install "$UDID" "$APP_PATH"
+
+          xcrun simctl launch "$UDID" com.stormandme.afterstorm | tee simulator-launch.txt
+          sleep 1
+          xcrun simctl io "$UDID" screenshot afterstorm-smoke-1s.png
+          sleep 2
+          xcrun simctl io "$UDID" screenshot afterstorm-smoke-3s.png
+          sleep 3
+          xcrun simctl io "$UDID" screenshot afterstorm-smoke-6s.png
+
+          for SCENARIO in first-quest quest-complete restoration main-progress; do
+            xcrun simctl terminate "$UDID" com.stormandme.afterstorm || true
+            xcrun simctl launch "$UDID" com.stormandme.afterstorm --afterstorm-acceptance "$SCENARIO" | tee "acceptance-${SCENARIO}-launch.txt"
+            sleep 4
+            xcrun simctl io "$UDID" screenshot "afterstorm-acceptance-${SCENARIO}.png"
+          done
+
+      - name: Upload release-check evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: afterstorm-xcode27-release-${{ github.run_id }}
+          if-no-files-found: ignore
+          path: |
+            xcodebuild.log
+            simulator-launch.txt
+            afterstorm-smoke-*.png
+            acceptance-*-launch.txt
+            afterstorm-acceptance-*.png
