@@ -6,6 +6,7 @@ struct QuestsView: View {
     let onSelect: (Quest) -> Void
     let onGiveQuest: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedArea: LifeArea?
     @State private var timeFilter: QuestTimeFilter = .any
 
@@ -46,22 +47,39 @@ struct QuestsView: View {
                                 .foregroundStyle(.white.opacity(0.86))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 50)
+                                .transition(
+                                    reduceMotion
+                                        ? .opacity
+                                        : .opacity.combined(with: .scale(scale: 0.985))
+                                )
                         } else if filtered.isEmpty {
                             ContentUnavailableView(
                                 "No quests in this pocket",
                                 systemImage: "cloud.sun",
                                 description: Text("Change a filter or ask AfterStorm for a fresh set.")
                             )
+                            .transition(
+                                reduceMotion
+                                    ? .opacity
+                                    : .opacity.combined(with: .scale(scale: 0.992))
+                            )
                         } else {
-                            if let continueQuest {
-                                questSection("Continue Something", quests: [continueQuest])
+                            Group {
+                                if let continueQuest {
+                                    questSection("Continue Something", quests: [continueQuest])
+                                }
+                                if !quickWins.isEmpty {
+                                    questSection("Quick Wins", quests: quickWins)
+                                }
+                                if !suggested.isEmpty {
+                                    questSection("Suggested for You", quests: suggested)
+                                }
                             }
-                            if !quickWins.isEmpty {
-                                questSection("Quick Wins", quests: quickWins)
-                            }
-                            if !suggested.isEmpty {
-                                questSection("Suggested for You", quests: suggested)
-                            }
+                            .transition(
+                                reduceMotion
+                                    ? .opacity
+                                    : .opacity.combined(with: .scale(scale: 0.992))
+                            )
                         }
 
                         Button {
@@ -74,6 +92,7 @@ struct QuestsView: View {
                         .padding(.top, 2)
                     }
                     .padding(20)
+                    .animation(reduceMotion ? nil : AfterStormTheme.quickSpring, value: model.isLoadingQuests)
                 }
             }
             .navigationTitle("Quests")
@@ -109,7 +128,7 @@ struct QuestsView: View {
     }
 
     private func filterButton(_ title: String, value: QuestTimeFilter) -> some View {
-        Button(title) { withAnimation(AfterStormTheme.quickSpring) { timeFilter = value } }
+        Button(title) { HapticsService.tap(); withAnimation(AfterStormTheme.quickSpring) { timeFilter = value } }
             .buttonStyle(HybridGlassChipStyle(selected: timeFilter == value))
             .accessibilityAddTraits(timeFilter == value ? .isSelected : [])
     }
@@ -117,11 +136,11 @@ struct QuestsView: View {
     private var areaFilters: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                Button("All") { selectedArea = nil }
+                Button("All") { HapticsService.tap(); withAnimation(AfterStormTheme.quickSpring) { selectedArea = nil } }
                     .buttonStyle(HybridGlassChipStyle(selected: selectedArea == nil))
                     .accessibilityAddTraits(selectedArea == nil ? .isSelected : [])
                 ForEach(model.selectedAreas.sorted(by: { $0.rawValue < $1.rawValue }), id: \.self) { area in
-                    Button { selectedArea = area } label: {
+                    Button { HapticsService.tap(); withAnimation(AfterStormTheme.quickSpring) { selectedArea = area } } label: {
                         Label(area.displayName, systemImage: area.symbolName)
                     }
                     .buttonStyle(HybridGlassChipStyle(selected: selectedArea == area))
@@ -144,7 +163,7 @@ struct QuestsView: View {
                 Button { HapticsService.tap(); onSelect(quest) } label: {
                     QuestDiscoveryCard(quest: quest)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PremiumPressButtonStyle())
             }
         }
     }
