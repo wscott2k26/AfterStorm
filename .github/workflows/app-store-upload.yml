@@ -1,0 +1,179 @@
+name: AfterStorm App Store Upload
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: afterstorm-app-store-upload
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    name: Stage metadata, sign, and upload AfterStorm 1.0
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+      DEVELOPMENT_TEAM: CY5N965N53
+      FASTLANE_DISABLE_COLORS: "1"
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require App Store Connect secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$APP_STORE_CONNECT_API_KEY_ID" || { echo "Missing APP_STORE_CONNECT_API_KEY_ID" >&2; exit 1; }
+          test -n "$APP_STORE_CONNECT_API_ISSUER_ID" || { echo "Missing APP_STORE_CONNECT_API_ISSUER_ID" >&2; exit 1; }
+          test -n "$APP_STORE_CONNECT_API_KEY_P8" || { echo "Missing APP_STORE_CONNECT_API_KEY_P8" >&2; exit 1; }
+
+      - name: Select Xcode 26.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE_APP='/Applications/Xcode_26.3.app'
+          test -d "$XCODE_APP"
+          sudo xcode-select -s "$XCODE_APP/Contents/Developer"
+          xcodebuild -version
+          swift --version
+
+      - name: Materialize API key securely
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+          printf '%s' "$APP_STORE_CONNECT_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "APP_STORE_CONNECT_API_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Run release tests and checks
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p release-artifacts
+          swift test 2>&1 | tee release-artifacts/swift-test.log
+          python3 scripts/check-app-store-release.py 2>&1 | tee release-artifacts/app-store-readiness.log
+
+      - name: Generate deterministic assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/generate-assets.py
+          python3 scripts/generate-storm-atmosphere.py
+          test -s AfterStormApp/Resources/Assets.xcassets/StormAtmosphere.imageset/storm-atmosphere.jpg
+
+      - name: Install release tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          if ! command -v fastlane >/dev/null 2>&1; then
+            brew install fastlane
+          fi
+          xcodegen --version
+          fastlane --version
+
+      - name: Generate Xcode project
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodegen generate
+          test -d AfterStorm.xcodeproj
+
+      - name: Stage App Store metadata
+        shell: bash
+        run: |
+          set -o pipefail
+          fastlane ios stage_store_listing 2>&1 | tee release-artifacts/fastlane-metadata.log
+
+      - name: Archive signed App Store build
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf build/AfterStorm.xcarchive
+          mkdir -p build
+          xcodebuild \
+            -project AfterStorm.xcodeproj \
+            -scheme AfterStorm \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/AfterStorm.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$APP_STORE_CONNECT_API_KEY_PATH" \
+            -authenticationKeyID "$APP_STORE_CONNECT_API_KEY_ID" \
+            -authenticationKeyIssuerID "$APP_STORE_CONNECT_API_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
+            CODE_SIGN_STYLE=Automatic \
+            archive 2>&1 | tee release-artifacts/xcode-archive.log
+          test -f build/AfterStorm.xcarchive/Info.plist
+          test -f build/AfterStorm.xcarchive/Products/Applications/AfterStorm.app/Info.plist
+          test -f build/AfterStorm.xcarchive/Products/Applications/AfterStorm.app/PlugIns/AfterStormWidget.appex/Info.plist
+
+      - name: Upload build to App Store Connect
+        shell: bash
+        run: |
+          set -o pipefail
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>destination</key>
+            <string>upload</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>teamID</key>
+            <string>CY5N965N53</string>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>manageAppVersionAndBuildNumber</key>
+            <false/>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/AfterStorm.xcarchive \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath build/AppStoreExport \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$APP_STORE_CONNECT_API_KEY_PATH" \
+            -authenticationKeyID "$APP_STORE_CONNECT_API_KEY_ID" \
+            -authenticationKeyIssuerID "$APP_STORE_CONNECT_API_ISSUER_ID" \
+            2>&1 | tee release-artifacts/xcode-upload.log
+
+      - name: Record release receipt
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "AfterStorm 1.0 build 1"
+            echo "Bundle: com.stormandme.afterstorm"
+            echo "Team: CY5N965N53"
+            echo "Commit: $GITHUB_SHA"
+            echo "Metadata staged: yes"
+            echo "Signed archive: yes"
+            echo "App Store upload command: success"
+          } | tee release-artifacts/release-receipt.txt
+
+      - name: Upload non-secret release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: afterstorm-app-store-upload-${{ github.run_id }}
+          if-no-files-found: warn
+          path: release-artifacts/
