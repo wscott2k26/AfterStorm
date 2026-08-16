@@ -1,0 +1,29 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Stage AfterStorm 1.0 metadata and screenshots in App Store Connect"
+  lane :stage_store_listing do
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("APP_STORE_CONNECT_API_KEY_ID"),
+      issuer_id: ENV.fetch("APP_STORE_CONNECT_API_ISSUER_ID"),
+      key_filepath: ENV.fetch("APP_STORE_CONNECT_API_KEY_PATH"),
+      duration: 1200,
+      in_house: false
+    )
+
+    upload_to_app_store(
+      api_key: api_key,
+      app_identifier: "com.stormandme.afterstorm",
+      app_version: "1.0",
+      metadata_path: "./fastlane/metadata",
+      screenshots_path: "./fastlane/screenshots",
+      skip_binary_upload: true,
+      skip_metadata: false,
+      skip_screenshots: false,
+      force: true,
+      run_precheck_before_submit: false,
+      submit_for_review: false,
+      automatic_release: false
+    )
+  end
+end
