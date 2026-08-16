@@ -1,0 +1,18 @@
+AfterStorm turns everyday overwhelm into small, achievable quests.
+
+Choose the parts of life that need attention — home, work, focus, digital life, movement, learning, and more — then let AfterStorm suggest a next step that fits the time and energy you have right now.
+
+Complete quests to earn Sparks and restore a storm-darkened world one piece at a time. Your progress becomes visible: lights return, the block changes, and the atmosphere clears as small wins add up.
+
+FEATURES
+• Tiny quests designed to feel doable, not overwhelming
+• Time filters for quick wins or deeper focus
+• A visual restoration world that changes with your progress
+• Quest Mode with a focused timer and pause/resume controls
+• Optional camera and voice input when you choose to use them
+• Apple Intelligence support on compatible devices, with graceful local fallbacks
+• Home Screen widget for a quick look at your progress
+• iCloud-backed progress when available, with a local fallback
+• Accessibility-aware motion, transparency, and haptic behavior
+
+AfterStorm is built around one idea: you do not have to fix everything today. Restore one thing. Then another.

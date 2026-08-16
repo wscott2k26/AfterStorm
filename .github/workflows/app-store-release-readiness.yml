@@ -6,6 +6,7 @@ on:
       - main
       - feature/afterstorm-core-slice
       - release/afterstorm-1.0-prep
+      - release/app-store-automation
   workflow_dispatch:
 
 concurrency:
